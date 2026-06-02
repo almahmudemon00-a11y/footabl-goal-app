@@ -1,0 +1,233 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Reusable global helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.uid == 'W97e8GcIGObrIiM1G5cRZV4BF3Z2' ||
+        request.auth.uid == '5V7for1aVtZhIjWCNR4vDfHllOA3' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true)
+      );
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    function incoming() {
+      return request.resource.data;
+    }
+    
+    function existing() {
+      return resource.data;
+    }
+    
+    // -------------------------------------------------------------
+    // SETTINGS COLLECTION
+    // -------------------------------------------------------------
+    match /settings/{settingsId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(settingsId) && isValidSettings(incoming());
+    }
+
+    function isValidSettings(data) {
+      return data.keys().hasAll(['custom_sheet_url'])
+        && data.keys().size() <= 2
+        && data.custom_sheet_url is string
+        && data.custom_sheet_url.size() <= 1000;
+    }
+
+    // -------------------------------------------------------------
+    // USERS COLLECTION
+    // -------------------------------------------------------------
+    match /users/{userId} {
+      allow get: if true; // Publicly readable for avatars/scores
+      allow list: if true; // Publicly queryable for usernames/scores to check uniqueness and load leaderboards
+      
+      allow create: if isSignedIn() 
+        && userId == request.auth.uid
+        && isValidId(userId)
+        && isValidScore(incoming())
+        && incoming().userId == request.auth.uid
+        && incoming().updatedAt == request.time;
+        
+      allow update: if isSignedIn() && (
+        (userId == request.auth.uid
+        && isValidScore(incoming())
+        && incoming().userId == existing().userId
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Normal update, we can change any properties except immutable uid
+          incoming().diff(existing()).affectedKeys().hasOnly(['username', 'avatar', 'bestStreak', 'gamesPlayed', 'correctGuesses', 'totalGuesses', 'favoriteUniverse', 'updatedAt', 'isAdmin', 'savedThreadIds', 'role', 'isBanned', 'reputationPoints', 'penaltiesCount'])
+        ))
+        || isAdmin()
+      );
+        
+      allow delete: if false; // Banned for player player data security
+    }
+    
+    function isValidScore(data) {
+      return data.keys().hasAll(['userId', 'username', 'avatar', 'bestStreak', 'gamesPlayed', 'correctGuesses', 'totalGuesses', 'joinedDate', 'updatedAt'])
+        && data.keys().size() <= 14 // Optional favoriteUniverse, savedThreadIds or extra fields up to 14
+        && data.userId is string
+        && data.userId.size() <= 64
+        && data.username is string
+        && data.username.size() >= 2
+        && data.username.size() <= 30
+        && data.avatar is string
+        && data.avatar.size() <= 10
+        && data.joinedDate is string
+        && data.joinedDate.size() <= 24
+        && data.bestStreak is int
+        && data.bestStreak >= 0
+        && data.bestStreak <= 50000
+        && data.gamesPlayed is int
+        && data.gamesPlayed >= 0
+        && data.correctGuesses is int
+        && data.correctGuesses >= 0
+        && data.totalGuesses is int
+        && data.totalGuesses >= 0;
+    }
+
+    // -------------------------------------------------------------
+    // COMMENTS COLLECTION
+    // -------------------------------------------------------------
+    match /comments/{commentId} {
+      allow get: if true;
+      allow list: if true; // Public forum listing
+      
+      allow create: if isSignedIn()
+        && isValidId(commentId)
+        && isValidComment(incoming())
+        && incoming().commentId == commentId
+        && incoming().userId == request.auth.uid;
+        
+      allow update: if isSignedIn()
+        && (
+          // Action: Upvoting/downvoting a comment, managing replies, liking and disliking comments/replies
+          incoming().diff(existing()).affectedKeys().hasOnly(['upvotes', 'downvotes', 'replies', 'likesCount', 'likedBy', 'dislikedBy', 'reported', 'reports', 'parentId', 'replyToUser'])
+           ||
+          // Action: Editing own comment text
+          (existing().userId == request.auth.uid
+           && isValidComment(incoming())
+           && incoming().commentId == existing().commentId
+           && incoming().userId == existing().userId
+           && incoming().diff(existing()).affectedKeys().hasOnly(['text', 'replies', 'parentId', 'replyToUser']))
+           ||
+          isAdmin()
+         );
+      
+      allow delete: if isSignedIn() && (
+        existing().userId == request.auth.uid || 
+        get(/databases/$(database)/documents/threads/$(existing().characterId)).data.userId == request.auth.uid || 
+        isAdmin()
+      );
+    }
+
+    // -------------------------------------------------------------
+    // THREADS COLLECTION
+    // -------------------------------------------------------------
+    match /threads/{threadId} {
+      allow get: if true;
+      allow list: if true;
+      
+      allow create: if isSignedIn()
+        && isValidId(threadId)
+        && isValidThread(incoming())
+        && incoming().threadId == threadId
+        && incoming().userId == request.auth.uid;
+        
+      allow update: if isSignedIn()
+        && (
+          // Action: Social feedback (Likes, Dislikes, Poll votes, and comments tracking)
+          incoming().diff(existing()).affectedKeys().hasOnly(['upvotes', 'downvotes', 'pollVotes', 'votedUserIds', 'commentsCount', 'engagementScore', 'likedBy', 'dislikedBy', 'reported', 'reports'])
+          ||
+          // Action: Edit content
+          ((existing().userId == request.auth.uid || isAdmin())
+           && isValidThread(incoming())
+           && incoming().threadId == existing().threadId
+           && incoming().userId == existing().userId
+           && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category']))
+           ||
+          isAdmin()
+        );
+        
+      allow delete: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+    }
+    
+    function isValidComment(data) {
+      return data.keys().hasAll(['commentId', 'characterId', 'userId', 'username', 'text', 'upvotes', 'timestamp'])
+        && data.keys().size() <= 14
+        && data.commentId is string
+        && data.commentId.size() <= 64
+        && data.characterId is string
+        && data.characterId.size() <= 64
+        && data.userId is string
+        && data.userId.size() <= 64
+        && data.username is string
+        && data.username.size() >= 2
+        && data.username.size() <= 40
+        && data.text is string
+        && data.text.size() >= 1
+        && data.text.size() <= 2000
+        && data.upvotes is int
+        && data.upvotes >= 0
+        && data.timestamp is int;
+    }
+
+    function isValidThread(data) {
+      return data.keys().hasAll(['threadId', 'title', 'description', 'category', 'type', 'userId', 'username', 'userAvatar', 'upvotes', 'downvotes', 'timestamp'])
+        && data.keys().size() <= 18
+        && data.threadId is string
+        && data.threadId.size() <= 64
+        && data.title is string
+        && data.title.size() >= 2
+        && data.title.size() <= 150
+        && data.description is string
+        && data.description.size() <= 2500
+        && data.category is string
+        && data.category.size() <= 60
+        && data.type is string
+        && (data.type == 'discussion' || data.type == 'poll' || data.type == 'prediction' || data.type == 'daily_debate')
+        && data.userId is string
+        && data.userId.size() <= 64
+        && data.username is string
+        && data.username.size() >= 2
+        && data.username.size() <= 40
+        && data.upvotes is int
+        && data.upvotes >= -1000
+        && data.downvotes is int
+        && data.downvotes >= -1000
+        && data.timestamp is int;
+    }
+
+    // -------------------------------------------------------------
+    // CATEGORIES COLLECTION
+    // -------------------------------------------------------------
+    match /categories/{categoryId} {
+      allow read, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // REPORTS COLLECTION
+    // -------------------------------------------------------------
+    match /reports/{reportId} {
+      allow read, list: if isAdmin();
+      allow create: if isSignedIn();
+      allow update: if false; // Reports should remain tamper-proof
+      allow delete: if isAdmin();
+    }
+  }
+}

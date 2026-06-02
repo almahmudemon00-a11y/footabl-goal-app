@@ -1,0 +1,308 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=DM+Sans:wght@400;500;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Cinzel", serif;
+  --font-sans: "DM Sans", sans-serif;
+  
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --color-secondary-surface: var(--secondary-surface);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-primary-border: var(--border);
+  --color-green: var(--green);
+  --color-red: var(--red);
+  --color-gold: #F5C842;
+}
+
+/* Global design systems */
+:root {
+  /* Default to Dark Mode */
+  --bg: #0E0E11;
+  --card: #17171C;
+  --card-hover: #1E1E26;
+  --secondary-surface: #1F1F27;
+  --primary: #F0F0F0;
+  --secondary: #888899;
+  --border: rgba(255, 255, 255, 0.07);
+  --green: #10B981;
+  --red: #EF4444;
+}
+
+html.light {
+  --bg: #F0EDE8;
+  --card: #FAFAF7;
+  --card-hover: #F2EFEA;
+  --secondary-surface: #EFECE6;
+  --primary: #1A1A1F;
+  --secondary: #4A4A5A; /* Deepened secondary text in light mode for much better contrast */
+  --border: rgba(0, 0, 0, 0.12); /* Slightly higher border contrast for clarity */
+  --green: #059669;
+  --red: #DC2626;
+}
+
+html.light .bg-bg,
+html.light body {
+  background-image: linear-gradient(rgba(248, 247, 244, 0.94), rgba(248, 247, 244, 0.97)), url("https://thumbs.dreamstime.com/b/illuminated-stadium-night-football-field-green-grass-nighttime-view-empty-soccer-brightly-lit-stands-lush-ready-361013016.jpg?w=992") !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
+  background-color: #F8F7F4 !important;
+}
+
+/* Directly target the PlayScreen container selector in light mode */
+html.light div#root:nth-of-type(1) > div:nth-of-type(1) > main:nth-of-type(1) > div:nth-of-type(1) {
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* Override the white text color in layout blocks under light mode */
+html.light .text-\[\#F0F0F0\] {
+  color: #1A1A1F !important;
+}
+
+/* Handle Game Over or intermediate card container dark background gradient overrides */
+html.light .bg-gradient-to-b.from-\[\#14151B\].to-\[\#0D0D11\] {
+  background-image: linear-gradient(to bottom, #FAFAF7, #EFECE6) !important;
+}
+
+/* Clear text and color overrides for light mode */
+html.light .text-zinc-350 {
+  color: #24242e !important;
+}
+html.light .text-zinc-300 {
+  color: #1a1a1f !important;
+}
+html.light .text-zinc-400 {
+  color: #374151 !important; /* Extremely clear dark-slate/charcoal state */
+}
+html.light .text-zinc-500 {
+  color: #4b5563 !important; /* Perfect contrast for labels/secondary text */
+}
+html.light .text-zinc-600 {
+  color: #1f2937 !important;
+}
+html.light .text-zinc-700 {
+  color: #111827 !important;
+}
+html.light .text-secondary {
+  color: #2d3748 !important; /* Ensure secondary colored texts are fully clear */
+}
+html.light .text-zinc-500\/80 {
+  color: rgba(55, 65, 81, 0.8) !important;
+}
+
+/* Background & card overrides to keep the light mode light and crisp */
+html.light .bg-\[\#17171C\] {
+  background-color: var(--card) !important;
+}
+html.light .bg-\[\#1F1F27\] {
+  background-color: var(--secondary-surface) !important;
+}
+html.light .bg-[#1F1F27] {
+  background-color: var(--secondary-surface) !important;
+}
+html.light .bg-[#17171C] {
+  background-color: var(--card) !important;
+}
+html.light .bg-zinc-950 {
+  background-color: var(--secondary-surface) !important;
+}
+html.light .bg-zinc-950\/40 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+html.light .bg-zinc-950\/50 {
+  background-color: rgba(250, 250, 247, 0.5) !important;
+}
+html.light .bg-zinc-950\/60 {
+  background-color: rgba(250, 250, 247, 0.6) !important;
+}
+html.light .bg-zinc-950\/70 {
+  background-color: rgba(250, 250, 247, 0.7) !important;
+}
+html.light .bg-zinc-950\/80 {
+  background-color: rgba(240, 237, 232, 0.75) !important; /* Light drop overlay */
+}
+html.light .bg-zinc-950\/85 {
+  background-color: rgba(250, 250, 247, 0.82) !important;
+}
+html.light .bg-zinc-950\/90 {
+  background-color: rgba(250, 250, 247, 0.88) !important;
+}
+html.light .bg-zinc-950\/95 {
+  background-color: rgba(240, 237, 232, 0.95) !important;
+}
+html.light .bg-zinc-800\/40 {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+html.light .bg-zinc-800\/60 {
+  background-color: rgba(0, 0, 0, 0.07) !important;
+}
+html.light .bg-zinc-900\/60 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+html.light .bg-zinc-900\/40 {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+html.light .bg-zinc-900 {
+  background-color: var(--secondary-surface) !important;
+}
+
+/* Gradient overrides so cards don't use heavy dark gradients in light mode */
+html.light .bg-gradient-to-b.to-zinc-950\/90 {
+  background-image: linear-gradient(to bottom, transparent, rgba(250, 250, 247, 0.92)) !important;
+}
+html.light .bg-gradient-to-t.from-zinc-950 {
+  background-image: linear-gradient(to top, rgba(250, 250, 247, 1) 15%, rgba(250, 250, 247, 0.2) 65%, rgba(250, 250, 247, 0.4)) !important;
+}
+
+/* Tab Overrides for Segmented Light Mode Controls */
+html.light #g_mode_goals:not(.bg-gradient-to-r),
+html.light #g_mode_assists:not(.bg-gradient-to-r),
+html.light #g_mode_ga:not(.bg-gradient-to-r) {
+  color: #4b5563 !important;
+}
+html.light #g_mode_goals:not(.bg-gradient-to-r):hover,
+html.light #g_mode_assists:not(.bg-gradient-to-r):hover,
+html.light #g_mode_ga:not(.bg-gradient-to-r):hover {
+  color: #111115 !important;
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Border overrides for light mode */
+html.light .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+html.light .border-white\/5 {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+html.light .border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.18) !important;
+}
+html.light .border-zinc-700\/60 {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+html.light .border-zinc-700\/55 {
+  border-color: rgba(0, 0, 0, 0.14) !important;
+}
+html.light .border-zinc-700\/50 {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+html.light .hover\:border-zinc-600:hover {
+  border-color: rgba(0, 0, 0, 0.24) !important;
+}
+html.light .hover\:bg-zinc-800\/80:hover {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Ensure the text colors inside g_mode_ selectors are perfectly readable in light mode */
+html.light #g_mode_hl, 
+html.light #g_mode_tf, 
+html.light #g_mode_blind {
+  opacity: 1 !important; /* Eliminate washing out from container opacity in light mode */
+}
+
+/* For disabled/coming-soon items in light mode, instead of low opacity, let's use a subtle gray background and text color of proper contrast */
+html.light #g_mode_tf,
+html.light #g_mode_blind {
+  background-color: #E2DFD5 !important; /* Warm light gray background for inactive */
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+html.light #g_mode_tf h3,
+html.light #g_mode_blind h3 {
+  color: #111115 !important;
+  opacity: 0.65 !important;
+}
+
+html.light #g_mode_tf p,
+html.light #g_mode_blind p {
+  color: #272730 !important;
+  opacity: 0.8 !important;
+}
+
+/* For active or hover/inactive higher-lower card in light mode */
+html.light #g_mode_hl {
+  background-color: var(--card) !important;
+}
+
+html.light #g_mode_hl h3 {
+  color: #111115 !important;
+  opacity: 1 !important;
+}
+
+html.light #g_mode_hl p {
+  color: #272730 !important;
+  opacity: 1 !important;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--primary);
+  font-family: "DM Sans", sans-serif;
+  overflow-y: auto;
+  min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Scrollbars system custom styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #E8472A;
+}
+
+/* Custom 3D Card flips */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.glow-ring {
+  box-shadow: 0 0 20px rgba(232, 71, 42, 0.4);
+}
+
+.glow-ring-blue {
+  box-shadow: 0 0 20px rgba(42, 122, 232, 0.4);
+}
+
+.glow-ring-gold {
+  box-shadow: 0 0 20px rgba(245, 200, 66, 0.4);
+}
+
+.universe-pill {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+@keyframes bounceScale {
+  0% { transform: scale(0.6); }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1.0); }
+}
+
+.animate-bounceScale {
+  animation: bounceScale 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}

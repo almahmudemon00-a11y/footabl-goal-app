@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "Score": {
+      "title": "User Score",
+      "description": "High scores and game session statistics for each user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "avatar": { "type": "string" },
+        "bestStreak": { "type": "integer" },
+        "gamesPlayed": { "type": "integer" },
+        "correctGuesses": { "type": "integer" },
+        "totalGuesses": { "type": "integer" },
+        "favoriteUniverse": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "username", "bestStreak", "gamesPlayed", "correctGuesses", "totalGuesses", "updatedAt"]
+    },
+    "Comment": {
+      "title": "Debate Comment",
+      "description": "Comments posted under characters or threads arguing and validating football perspectives",
+      "type": "object",
+      "properties": {
+        "commentId": { "type": "string" },
+        "characterId": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "text": { "type": "string" },
+        "upvotes": { "type": "integer" },
+        "timestamp": { "type": "integer" },
+        "replies": { "type": "array" }
+      },
+      "required": ["commentId", "characterId", "userId", "username", "text", "upvotes", "timestamp"]
+    },
+    "Thread": {
+      "title": "Discussion Thread",
+      "description": "Reddit/Twitter-style thread where users debate all things football",
+      "type": "object",
+      "properties": {
+        "threadId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "type": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "userAvatar": { "type": "string" },
+        "upvotes": { "type": "integer" },
+        "downvotes": { "type": "integer" },
+        "timestamp": { "type": "integer" },
+        "pollOptions": { "type": "array" },
+        "pollVotes": { "type": "array" },
+        "votedUserIds": { "type": "array" },
+        "commentsCount": { "type": "integer" },
+        "engagementScore": { "type": "integer" }
+      },
+      "required": ["threadId", "title", "description", "category", "type", "userId", "username", "userAvatar", "upvotes", "downvotes", "timestamp"]
+    },
+    "GlobalSettings": {
+      "title": "Global Settings",
+      "description": "Global application configuration settings shared across all users",
+      "type": "object",
+      "properties": {
+        "custom_sheet_url": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["custom_sheet_url"]
+    }
+  },
+  "firestore": {
+    "settings/{settingsId}": {
+      "schema": "GlobalSettings",
+      "description": "Global configuration variables such as dynamic sheets URL"
+    },
+    "users/{userId}": {
+      "schema": "Score",
+      "description": "User profiles, scores, stats, and metadata"
+    },
+    "comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Global community debate comments indexed under characterId"
+    },
+    "threads/{threadId}": {
+      "schema": "Thread",
+      "description": "Reddit/Twitter-style thread where fans debate football categories"
+    }
+  }
+}
