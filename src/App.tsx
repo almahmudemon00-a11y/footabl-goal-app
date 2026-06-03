@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useLayoutEffect } from 'react';
-import { Sparkles, Medal, User, Flame, Moon, Sun, MessageSquare, Compass, Settings, CircleDot } from 'lucide-react';
+import { Sparkles, Medal, User, Flame, Moon, Sun, MessageSquare, Compass, Settings, CircleDot, Trophy } from 'lucide-react';
 import { Character, Comment, User as UserType, UserStats, ReplyComment } from './types.ts';
 import { DEFAULT_CHARACTERS, PRE_SEEDED_COMMENTS } from './data.ts';
 
@@ -137,6 +137,50 @@ export default function App() {
     } catch (e) {
       console.error('Error checking unique username:', e);
       return false;
+    }
+  };
+
+  const searchUserByUsername = async (usernameToSearch: string): Promise<{ searchedUser: UserType; searchedStats: UserStats } | null> => {
+    try {
+      const usersCol = collection(db, 'users');
+      const q = query(
+        usersCol,
+        where('username', '==', usernameToSearch)
+      );
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) {
+        return null;
+      }
+      
+      let foundDoc: any = null;
+      querySnapshot.forEach((doc) => {
+        foundDoc = { id: doc.id, ...doc.data() };
+      });
+      
+      if (!foundDoc) return null;
+      
+      const searchedUser: UserType = {
+        uid: foundDoc.id,
+        isGuest: false,
+        guestId: 'Guest_' + foundDoc.id.slice(0, 4),
+        username: foundDoc.username,
+        avatar: foundDoc.avatar || '🏆',
+        joinedDate: foundDoc.joinedDate || 'Unknown',
+        isAdmin: !!foundDoc.isAdmin,
+      };
+      
+      const searchedStats: UserStats = {
+        bestStreak: foundDoc.bestStreak || 0,
+        gamesPlayed: foundDoc.gamesPlayed || 0,
+        correctGuesses: foundDoc.correctGuesses || 0,
+        totalGuesses: foundDoc.totalGuesses || 0,
+        favoriteUniverse: foundDoc.favoriteUniverse || 'Goals',
+      };
+      
+      return { searchedUser, searchedStats };
+    } catch (e) {
+      console.error('Error searching user:', e);
+      return null;
     }
   };
 
@@ -739,7 +783,11 @@ export default function App() {
       
       throw new Error('No characters with a valid name column found under headers: ' + headerRow.join(', '));
     } catch (e: any) {
-      console.error('Error loading characters sheet', e);
+      if (e instanceof TypeError || (e.message && e.message.includes('fetch'))) {
+        console.warn('Network error or CORS issue fetching custom sheet (falling back):', e);
+      } else {
+        console.error('Error loading characters sheet', e);
+      }
       setIsSheetLoading(false);
       return { 
         success: false, 
@@ -932,13 +980,23 @@ export default function App() {
       {/* FIXED NAVBAR HEADER (Desktop view) */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-card border-b border-primary-border/60 backdrop-blur-md px-4 md:px-8 h-16 flex items-center justify-between">
         {/* Brand Left */}
-        <div className="flex flex-col text-left leading-none">
-          <span className="font-display text-2xl font-black tracking-tighter text-primary select-none">
-            THE COUNT
-          </span>
-          <span className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-1">
-            Who's been busy?
-          </span>
+        <div className="flex items-center gap-3 text-left">
+          {/* Custom Logo at front */}
+          <div className="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-[#E8472A] to-[#ff6b52] flex items-center justify-center text-white shadow-md shadow-[#E8472A]/20 transform hover:scale-105 transition-transform duration-200">
+            <Trophy className="w-5 h-5 text-white" />
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-card flex items-center justify-center">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            </div>
+          </div>
+          
+          <div className="flex flex-col text-left leading-none">
+            <span className="font-display text-2xl font-black tracking-tighter text-primary select-none">
+              Statball
+            </span>
+            <span className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-1">
+              Play. Debate. Rank up.
+            </span>
+          </div>
         </div>
 
         {/* Navigation Middle Tabs (Visible on screens >= md) */}
@@ -1093,6 +1151,7 @@ export default function App() {
             onLogout={handleLogout}
             onUpdateUsername={handleUpdateUsername}
             checkIfUsernameTaken={checkIfUsernameTaken}
+            searchUserByUsername={searchUserByUsername}
           />
         )}
       </main>
