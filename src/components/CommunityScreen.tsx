@@ -324,6 +324,10 @@ export default function CommunityScreen({
 
   // Real-time listener for active reports (Admin view)
   useEffect(() => {
+    if (!user?.isAdmin) {
+      setReportsList([]);
+      return;
+    }
     const qReports = query(collection(db, 'reports'), orderBy('createdAt', 'desc'));
     const unsubReports = onSnapshot(qReports, (snap) => {
       const list: any[] = [];
@@ -335,7 +339,7 @@ export default function CommunityScreen({
       console.error("Reports loading error:", err);
     });
     return () => unsubReports();
-  }, []);
+  }, [user?.isAdmin]);
 
   // Sync details screen if a post gets modified/deleted while active
   useEffect(() => {

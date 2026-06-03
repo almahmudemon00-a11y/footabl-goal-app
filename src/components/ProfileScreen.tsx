@@ -13,7 +13,7 @@ interface ProfileScreenProps {
   user: User;
   stats: UserStats;
   comments: Record<string, Comment[]>;
-  onLogin: () => void;
+  onLogin: () => Promise<{ success: boolean; error?: string }>;
   onLogout: () => void;
   onUpdateUsername: (newUsername: string) => Promise<boolean>;
   checkIfUsernameTaken: (usernameToCheck: string, excludeUid: string | null) => Promise<boolean>;
@@ -159,8 +159,11 @@ export default function ProfileScreen({
         return;
       }
       localStorage.setItem('pending_claimed_username', trimmed);
-      onLogin();
       setShowClaimModal(false);
+      const res = await onLogin();
+      if (res && !res.success) {
+        setPopupAlert({ message: res.error || 'Google Authentication failed. Please try again.' });
+      }
     }
   };
 

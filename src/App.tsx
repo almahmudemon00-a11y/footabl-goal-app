@@ -798,13 +798,22 @@ export default function App() {
   };
 
   // Authenticate Real Google Auth Trigger
-  const handleLogin = async () => {
+  const handleLogin = async (): Promise<{ success: boolean; error?: string }> => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseUser = result.user;
       await createOrGetUserProfile(firebaseUser);
-    } catch (error) {
+      return { success: true };
+    } catch (error: any) {
       console.error('Google popup sign in failed:', error);
+      const msg = error?.message || String(error);
+      const isPopupError = msg.includes('popup-closed-by-user') || msg.includes('popup-blocked') || msg.includes('cancelled-by-user');
+      return {
+        success: false,
+        error: isPopupError
+          ? 'The Google Sign-In popup was closed or blocked by your browser. E.g. inside an iframe preview, browsers block popups. To login successfully, please click the "Open in new tab" icon (top-right of this window) and sign in there!'
+          : msg
+      };
     }
   };
 
