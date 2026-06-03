@@ -1042,7 +1042,12 @@ export default function PlayScreen({
                   </div>
                   <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto">
                     {activeComments.slice(0, 2).map((comment) => (
-                      <div key={comment.id} className="text-left bg-zinc-900/40 p-2.5 rounded-xl border border-white/5 hover:border-white/10 transition-all">
+                      <div 
+                        key={comment.id} 
+                        onClick={() => onNavigateToCommunity(rightChar.id)}
+                        className="text-left bg-zinc-900/40 p-2.5 rounded-xl border border-white/5 hover:border-white/10 hover:bg-zinc-900/60 transition-all cursor-pointer select-none"
+                        title="Click to view original debate thread"
+                      >
                         <div className="flex justify-between items-center mb-0.5">
                           <span className="font-extrabold text-[11px] text-amber-200/90 tracking-wide">🏆 {comment.username}</span>
                           <span className="text-[10px] text-zinc-500 font-mono">👍 {comment.upvotes} UPVOTES</span>

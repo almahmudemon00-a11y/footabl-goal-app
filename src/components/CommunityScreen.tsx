@@ -353,6 +353,18 @@ export default function CommunityScreen({
     }
   }, [posts, selectedPost]);
 
+  // Handle redirect expand from PlayScreen target
+  useEffect(() => {
+    if (initialSelectedCharId && posts.length > 0) {
+      const matchingPost = posts.find(
+        p => p.threadId === initialSelectedCharId || p.threadCode === initialSelectedCharId
+      );
+      if (matchingPost) {
+        setSelectedPost(matchingPost);
+      }
+    }
+  }, [initialSelectedCharId, posts]);
+
   // Core authorization variables
   const isBanned = userProfile?.isBanned === true;
   const isUserAdmin = userProfile?.role === 'admin' || userProfile?.isAdmin === true || user.isAdmin === true;
