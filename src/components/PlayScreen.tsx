@@ -183,6 +183,34 @@ export default function PlayScreen({
   // Country & Club filters
   const [selectedCountry, setSelectedCountry] = useState<string>('All');
   const [selectedClub, setSelectedClub] = useState<string>('All');
+
+  // Custom Dropdown open/close states
+  const [isModeOpen, setIsModeOpen] = useState<boolean>(false);
+  const [isCountryOpen, setIsCountryOpen] = useState<boolean>(false);
+  const [isClubOpen, setIsClubOpen] = useState<boolean>(false);
+
+  // References for handling clicking outside to close
+  const modeRef = useRef<HTMLDivElement>(null);
+  const countryRef = useRef<HTMLDivElement>(null);
+  const clubRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (modeRef.current && !modeRef.current.contains(event.target as Node)) {
+        setIsModeOpen(false);
+      }
+      if (countryRef.current && !countryRef.current.contains(event.target as Node)) {
+        setIsCountryOpen(false);
+      }
+      if (clubRef.current && !clubRef.current.contains(event.target as Node)) {
+        setIsClubOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
   
   // Game state
   const [leftChar, setLeftChar] = useState<Character | null>(null);
@@ -492,7 +520,7 @@ export default function PlayScreen({
   }, [sessionPairings]);
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] pt-16 md:pt-20 pb-4 md:pb-6 px-3 md:px-8 max-w-6xl mx-auto flex flex-col justify-between select-none bg-transparent dark:bg-gradient-to-br dark:from-[#0c1220] dark:via-[#04060c] dark:to-[#010204] overflow-hidden">
+    <div className="relative min-h-[calc(100vh-3.5rem)] pt-[4.2rem] md:pt-20 pb-3 md:pb-5 px-2.5 md:px-8 max-w-6xl mx-auto flex flex-col justify-between select-none bg-transparent dark:bg-gradient-to-br dark:from-[#0c1220] dark:via-[#04060c] dark:to-[#010204] overflow-hidden">
       
       {/* Ultimate Football Arena Backdrop Effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -529,33 +557,33 @@ export default function PlayScreen({
       </AnimatePresence>
 
       {/* Dynamic Header: Streak Tracker & Level Meter */}
-      <div className="w-full max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 px-3 mb-3 md:mb-4 relative z-30 select-none">
+      <div className="w-full max-w-4xl mx-auto flex flex-row items-center justify-between gap-3 px-3 mb-1.5 md:mb-4 relative z-30 select-none">
         
         {/* Score & Streaks */}
-        <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
-          <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest leading-none">esports arena standings</span>
-          <div className="flex items-center gap-2 mt-0.5 md:mt-1">
-            <div className="bg-[#E8472A]/10 text-[#E8472A] border border-[#E8472A]/20 px-2.5 md:px-3.5 py-1 md:py-1.5 rounded-xl flex items-center gap-1.5 md:gap-2 shadow-md">
-              <Flame className="w-3.5 h-3.5 fill-current animate-pulse text-[#FF5D42]" />
-              <span className="font-display font-black text-sm md:text-lg leading-none">{streak}</span>
-              <span className="text-[8px] md:text-[9px] font-extrabold uppercase tracking-widest text-[#FF5D42]/95">STREAK</span>
+        <div className="flex flex-col items-start text-left">
+          <span className="text-[7.5px] md:text-[9px] font-black text-zinc-500 uppercase tracking-widest leading-none">esports standings</span>
+          <div className="flex items-center gap-1.5 mt-0.5 md:mt-1">
+            <div className="bg-[#E8472A]/10 text-[#E8472A] border border-[#E8472A]/20 px-2 md:px-3 py-0.5 md:py-1 rounded-lg flex items-center gap-1 md:gap-1.5 shadow-md">
+              <Flame className="w-3 md:w-3.5 h-3 md:h-3.5 fill-current animate-pulse text-[#FF5D42]" />
+              <span className="font-display font-black text-xs md:text-base leading-none">{streak}</span>
+              <span className="text-[7px] md:text-[8.5px] font-extrabold uppercase tracking-widest text-[#FF5D42]/95">STREAK</span>
             </div>
             
-            <div className="bg-zinc-950/60 text-gold border border-gold/20 px-2.5 md:px-3.5 py-1 md:py-1.5 rounded-xl flex items-center gap-1.5 md:gap-2 shadow-md">
-              <Trophy className="w-3.5 h-3.5 text-gold fill-gold/20" />
-              <span className="font-display font-black text-sm md:text-lg leading-none">{bestStreak}</span>
-              <span className="text-[8px] md:text-[9px] font-extrabold uppercase tracking-widest text-gold/95">BEST</span>
+            <div className="bg-zinc-950/60 text-gold border border-gold/20 px-2 md:px-3 py-0.5 md:py-1 rounded-lg flex items-center gap-1 md:gap-1.5 shadow-md">
+              <Trophy className="w-3 md:w-3.5 h-3 md:h-3.5 text-gold fill-gold/20" />
+              <span className="font-display font-black text-xs md:text-base leading-none">{bestStreak}</span>
+              <span className="text-[7px] md:text-[8.5px] font-extrabold uppercase tracking-widest text-gold/95">BEST</span>
             </div>
           </div>
         </div>
 
         {/* Level bar progress to showcase esports level indicator */}
-        <div className="flex-1 w-full max-w-[200px] md:max-w-[220px] flex flex-col items-center sm:items-end text-center sm:text-right">
-          <div className="flex justify-between w-full text-[8px] md:text-[9px] font-black text-zinc-500 dark:text-zinc-400 mb-0.5 md:mb-1 tracking-wider uppercase">
-            <span>STREAK LEVEL {Math.max(1, Math.floor(streak / 3) + 1)}</span>
-            <span>{(streak % 3)} / 3 HITS</span>
+        <div className="flex-1 max-w-[120px] xs:max-w-[170px] md:max-w-[220px] flex flex-col items-end text-right">
+          <div className="flex justify-between w-full text-[7.5px] md:text-[9px] font-black text-zinc-500 dark:text-zinc-400 mb-0.5 md:mb-1 tracking-wider uppercase">
+            <span>LEVEL {Math.max(1, Math.floor(streak / 3) + 1)}</span>
+            <span>{(streak % 3)} / 3</span>
           </div>
-          <div className="w-full bg-zinc-300/40 dark:bg-zinc-950/80 rounded-full h-1.5 md:h-2 overflow-hidden border border-zinc-200 dark:border-white/5 p-[1px]">
+          <div className="w-full bg-zinc-300/40 dark:bg-zinc-950/80 rounded-full h-1 md:h-1.5 overflow-hidden border border-zinc-200 dark:border-white/5 p-[1px]">
             <motion.div 
               className="bg-gradient-to-r from-amber-500 via-[#FF5D42] to-[#E8472A] h-full rounded-full shadow-[0_0_12px_rgba(232,71,42,0.5)]"
               initial={{ width: 0 }}
@@ -567,49 +595,59 @@ export default function PlayScreen({
 
       </div>
 
-      {/* Segmented Mode Selector Controls */}
-      <div className="w-full text-center mt-0.5 mb-1 md:mb-2 relative z-30">
-        
-        {/* Elegantly styled Segmented Tabs */}
-        <div className="w-full max-w-sm md:max-w-md mx-auto mb-3 md:mb-4 bg-zinc-950/90 p-1 rounded-xl md:rounded-2xl border border-white/5 backdrop-blur-xl flex gap-1 shadow-2xl relative">
+      {/* Dynamic Game Mode Selectors Bar */}
+      <div className="w-full text-center mt-0.5 mb-2 relative z-30 px-3">
+        <div className="w-full max-w-xl mx-auto flex bg-zinc-950/95 p-1 rounded-xl border border-white/5 backdrop-blur-xl shadow-2xl gap-1">
           
           <button
-            id="g_mode_goals"
-            onClick={() => setActiveMode('goals')}
-            className={`flex-1 flex items-center justify-center gap-2 py-1.5 md:py-2.5 px-1 rounded-xl text-[10px] md:text-xs font-black tracking-widest uppercase transition-all duration-300 cursor-pointer ${
+            id="game_mode_goals"
+            onClick={() => {
+              setActiveMode('goals');
+              setSelectedCountry('All');
+              setSelectedClub('All');
+            }}
+            className={`flex-1 h-9 md:h-10 px-2 lg:px-4 rounded-lg text-[10px] md:text-xs font-black tracking-widest uppercase transition-all flex items-center justify-center gap-1.5 cursor-pointer outline-none select-none border ${
               activeMode === 'goals'
-                ? 'bg-gradient-to-r from-[#FF5D42] to-[#E8472A] text-white shadow-[0_0_15px_rgba(232,71,42,0.45)] scale-[1.01]'
-                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                ? 'bg-gradient-to-r from-amber-500/10 to-[#FF5D42]/10 text-[#FF5D42] border-[#FF5D42]/45 shadow-[0_0_12px_rgba(255,93,66,0.12)]'
+                : 'bg-transparent text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border-transparent'
             }`}
           >
-            <span className="text-sm">⚽</span>
+            <span>⚽</span>
             <span>Goals</span>
           </button>
-          
+
           <button
-            id="g_mode_assists"
-            onClick={() => setActiveMode('assists')}
-            className={`flex-1 flex items-center justify-center gap-2 py-1.5 md:py-2.5 px-1 rounded-xl text-[10px] md:text-xs font-black tracking-widest uppercase transition-all duration-300 cursor-pointer ${
+            id="game_mode_assists"
+            onClick={() => {
+              setActiveMode('assists');
+              setSelectedCountry('All');
+              setSelectedClub('All');
+            }}
+            className={`flex-1 h-9 md:h-10 px-2 lg:px-4 rounded-lg text-[10px] md:text-xs font-black tracking-widest uppercase transition-all flex items-center justify-center gap-1.5 cursor-pointer outline-none select-none border ${
               activeMode === 'assists'
-                ? 'bg-gradient-to-r from-[#FF5D42] to-[#E8472A] text-white shadow-[0_0_15px_rgba(232,71,42,0.45)] scale-[1.01]'
-                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                ? 'bg-gradient-to-r from-amber-500/10 to-[#FF5D42]/10 text-[#FF5D42] border-[#FF5D42]/45 shadow-[0_0_12px_rgba(255,93,66,0.12)]'
+                : 'bg-transparent text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border-transparent'
             }`}
           >
-            <span className="text-sm">👟</span>
+            <span>👟</span>
             <span>Assists</span>
           </button>
-          
+
           <button
-            id="g_mode_ga"
-            onClick={() => setActiveMode('gAndA')}
-            className={`flex-1 flex items-center justify-center gap-2 py-1.5 md:py-2.5 px-1 rounded-xl text-[10px] md:text-xs font-black tracking-widest uppercase transition-all duration-300 cursor-pointer ${
+            id="game_mode_gAndA"
+            onClick={() => {
+              setActiveMode('gAndA');
+              setSelectedCountry('All');
+              setSelectedClub('All');
+            }}
+            className={`flex-1 h-9 md:h-10 px-2 lg:px-4 rounded-lg text-[10px] md:text-xs font-black tracking-widest uppercase transition-all flex items-center justify-center gap-1.5 cursor-pointer outline-none select-none border ${
               activeMode === 'gAndA'
-                ? 'bg-gradient-to-r from-[#FF5D42] to-[#E8472A] text-white shadow-[0_0_15px_rgba(232,71,42,0.45)] scale-[1.01]'
-                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                ? 'bg-gradient-to-r from-amber-500/10 to-[#FF5D42]/10 text-[#FF5D42] border-[#FF5D42]/45 shadow-[0_0_12px_rgba(255,93,66,0.12)]'
+                : 'bg-transparent text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border-transparent'
             }`}
           >
-            <span className="text-sm">🔥</span>
-            <span>G + A</span>
+            <span>🔥</span>
+            <span>Total G+A</span>
           </button>
 
         </div>
@@ -701,7 +739,7 @@ export default function PlayScreen({
       ) : leftChar && rightChar ? (
         <div className="flex-1 flex flex-col justify-center items-center w-full relative z-20">
           
-          <div className="w-full flex flex-col md:flex-row md:gap-x-8 gap-y-2.5 items-stretch relative max-w-5xl mx-auto">
+          <div className="w-full flex flex-row gap-2.5 md:gap-8 items-stretch relative max-w-5xl mx-auto px-1 md:px-0">
             
             {/* LEFT PLAYER CARD - KNOWN BASE REFERENCE */}
             {(() => {
@@ -710,13 +748,13 @@ export default function PlayScreen({
               return (
                 <div 
                   id="character_left_card" 
-                  className={`w-full md:flex-1 ${leftRarity.bgColor} rounded-2xl md:rounded-3xl border md:border-2 ${leftRarity.borderBg} overflow-hidden shadow-2xl flex flex-col group h-[25vh] md:h-[48vh] max-h-[195px] md:max-h-[430px] relative transition-transform duration-300 hover:scale-[1.01]`}
+                  className={`w-full flex-1 aspect-square md:aspect-square ${leftRarity.bgColor} rounded-xl md:rounded-3xl border md:border-2 ${leftRarity.borderBg} overflow-hidden shadow-2xl flex flex-col group relative transition-transform duration-300 hover:scale-[1.01]`}
                 >
                   {/* Spotlight Background lighting */}
                   <div className={`absolute inset-0 ${leftRarity.radialLights} pointer-events-none z-0`} />
                   
                   {/* Premium FUT Shield Crest Layout */}
-                  <div className="relative w-full h-[65%] md:h-[68%] overflow-hidden bg-gradient-to-b from-transparent to-zinc-950/90 border-b border-white/5 z-10 flex items-center justify-center">
+                  <div className="relative w-full h-[69%] md:h-[73%] overflow-hidden bg-gradient-to-b from-transparent to-zinc-950/90 border-b border-white/5 z-10 flex items-center justify-center">
                     
                     {/* Golden stadium backdrop rays */}
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_0%,transparent_100%)] mix-blend-overlay" />
@@ -732,49 +770,45 @@ export default function PlayScreen({
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-zinc-950/40 z-15 pointer-events-none" />
 
-                    <div className={`absolute top-2 md:top-4 left-2 md:left-4 z-25 ${leftRarity.badgeBg} backdrop-blur-md text-white px-2 md:px-2.5 py-0.5 md:py-1 font-display text-[80%] md:text-[9px] font-black tracking-widest rounded-lg uppercase shadow-md select-none border border-white/15`}>
-                      {leftRarity.name} <span className="hidden sm:inline">• {getMetricValue(leftChar, activeMode) >= 600 ? 'LEGEND' : 'HERO'}</span>
+                    <div className={`absolute top-1.5 md:top-4 left-1.5 md:left-4 z-25 ${leftRarity.badgeBg} backdrop-blur-md text-white px-1 md:px-2.5 py-0.5 font-display text-[6.5px] xs:text-[7.5px] md:text-[9.5px] font-black tracking-widest rounded md:rounded-lg uppercase shadow-md select-none border border-white/10`}>
+                      {leftRarity.name}
                     </div>
 
-                    {/* Dynamic Club and Country Pills (compact on mobile, premium top-right) */}
-                    <div className="absolute top-2 md:top-4 right-2 md:right-4 z-25 flex flex-col gap-1 md:gap-1.5 select-none text-right max-w-[150px] md:max-w-[220px] align-right">
-                      <div className="bg-zinc-950/85 backdrop-blur-md px-2 md:px-[18px] py-0.5 md:py-[5px] rounded-full border border-white/20 flex items-center gap-1 md:gap-2 shadow-lg max-w-[140px] md:max-w-[200px] ml-auto">
-                        <span className="text-xs md:text-sm leading-none flex-shrink-0 select-none">🌍</span>
-                        <span className="text-[9.5px] md:text-[11.5px] font-bold text-zinc-300 truncate text-left tracking-wide">
-                          <span className="hidden md:inline text-zinc-400 font-semibold">Country:</span> {leftChar.category}
+                    {/* Compact Club & Country pills */}
+                    <div className="absolute top-1.5 md:top-4 right-1.5 md:right-4 z-25 flex flex-col gap-0.5 md:gap-1.5 select-none text-right justify-end items-end">
+                      <div className="bg-zinc-950/85 backdrop-blur-md px-1 md:px-3 py-0.5 md:py-[5px] rounded-full border border-white/20 flex items-center gap-0.5 md:gap-1.5 shadow-lg max-w-[55px] xs:max-w-[75px] md:max-w-none">
+                        <span className="text-[8px] md:text-sm leading-none flex-shrink-0 select-none">🌍</span>
+                        <span className="text-[6.5px] xs:text-[7.5px] md:text-[11px] font-bold text-zinc-300 truncate tracking-wide">
+                          {leftChar.category}
                         </span>
                       </div>
-                      <div className={`bg-zinc-950/90 backdrop-blur-md px-2 md:px-[18px] py-0.5 md:py-[5px] rounded-full border flex items-center gap-1 md:gap-2 shadow-lg max-w-[140px] md:max-w-[200px] ml-auto ${getUnivPill(leftChar.universe).border}`}>
-                        <span className="text-xs md:text-sm leading-none flex-shrink-0 select-none">⚽</span>
-                        <span className="text-[9.5px] md:text-[11.5px] font-bold truncate text-left tracking-wide" style={{ color: getUnivPill(leftChar.universe).text }}>
-                          <span className="hidden md:inline opacity-75 font-semibold" style={{ color: getUnivPill(leftChar.universe).text }}>Club:</span> {leftChar.universe}
+                      <div className={`bg-zinc-950/90 backdrop-blur-md px-1 md:px-3 py-0.5 md:py-[5px] rounded-full border flex items-center gap-0.5 md:gap-1.5 shadow-lg max-w-[55px] xs:max-w-[75px] md:max-w-none ${getUnivPill(leftChar.universe).border}`}>
+                        <span className="text-[8px] md:text-sm leading-none flex-shrink-0 select-none">⚽</span>
+                        <span className="text-[6.5px] xs:text-[7.5px] md:text-[11px] font-bold truncate tracking-wide" style={{ color: getUnivPill(leftChar.universe).text }}>
+                          {leftChar.universe}
                         </span>
                       </div>
                     </div>
 
-                    <div className="absolute bottom-1.5 md:bottom-4 left-3 md:left-4 right-3 md:right-4 z-20 text-center select-none pointer-events-none">
-                      <h2 className="font-display text-sm xs:text-base md:text-xl lg:text-2xl font-extrabold uppercase italic tracking-tighter text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.95)] line-clamp-1">
+                    <div className="absolute bottom-1 md:bottom-4 left-2 md:left-4 right-2 md:right-4 z-20 text-center select-none pointer-events-none">
+                      <h2 className="font-display text-[9px] xs:text-xs md:text-xl lg:text-2xl font-extrabold uppercase italic tracking-tighter text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.95)] line-clamp-1">
                         {leftChar.name}
                       </h2>
                     </div>
                   </div>
 
                   {/* Rating / Stat representation area */}
-                  <div className="flex-1 bg-zinc-950/50 backdrop-blur-lg flex flex-col items-center justify-center py-1.5 md:py-3 px-2 text-center relative z-20 border-t border-white/5">
-                    <span className="block text-[7.5px] md:text-[9px] text-[#EBEBF5]/40 font-black uppercase tracking-widest mb-0.5 md:mb-1 select-none leading-none">
+                  <div className="flex-1 bg-zinc-950/50 backdrop-blur-lg flex flex-col items-center justify-center py-0.5 md:py-1.5 px-2 text-center relative z-20 border-t border-white/5">
+                    <span className="block text-[6px] md:text-[8px] text-[#EBEBF5]/40 font-black uppercase tracking-widest mb-0.5 select-none leading-none">
                       {activeMode === 'goals' ? '👉 CAREER GOALS' : activeMode === 'assists' ? '👉 MAESTRO ASSISTS' : '👉 MATCHPLAY G+A'}
                     </span>
                     
-                    <div className="flex items-center gap-1 md:gap-2">
-                      <span className="text-sm md:text-xl">⚽</span>
-                      <span className={`font-display text-xl xs:text-2xl md:text-4xl lg:text-5xl font-black bg-gradient-to-r ${leftRarity.color} bg-clip-text text-transparent leading-none select-none tracking-tighter ${leftRarity.textGlow}`}>
+                    <div className="flex items-center gap-1 md:gap-1.5">
+                      <span className="text-[8px] md:text-base">⚽</span>
+                      <span className={`font-display text-[10px] xs:text-sm md:text-3xl lg:text-4xl font-black bg-gradient-to-r ${leftRarity.color} bg-clip-text text-transparent leading-none select-none tracking-tighter ${leftRarity.textGlow}`}>
                         {leftVal}
                       </span>
                     </div>
-
-                    <span className="hidden sm:block text-[7px] md:text-[8px] font-extrabold text-zinc-500 mt-1 uppercase tracking-wider opacity-75">
-                      📁 Verified Database Matrix
-                    </span>
                   </div>
                 </div>
               );
@@ -786,7 +820,7 @@ export default function PlayScreen({
               <div className="hidden md:block absolute w-72 h-[2px] bg-gradient-to-r from-transparent via-[#E8472A]/40 to-transparent blur-[1px]" />
               <div className="hidden md:block absolute w-[10rem] h-[1px] bg-gradient-to-r from-transparent via-[#FF5D42]/80 to-transparent" />
               
-              <div className="w-9 h-9 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-[#FF5D42] via-[#E8472A] to-[#A51B06] border-2 md:border-4 border-zinc-950 flex items-center justify-center font-display text-xs md:text-lg font-black text-white shadow-[0_0_20px_rgba(232,71,42,0.85)] relative animate-pulse">
+              <div className="w-8 h-8 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-[#FF5D42] via-[#E8472A] to-[#A51B06] border-2 md:border-4 border-zinc-950 flex items-center justify-center font-display text-[10px] md:text-lg font-black text-white shadow-[0_0_20px_rgba(232,71,42,0.85)] relative animate-pulse">
                 <div className="absolute inset-0 rounded-full border border-white/20 animate-ping opacity-60" />
                 <span className="italic tracking-tighter">VS</span>
               </div>
@@ -799,13 +833,13 @@ export default function PlayScreen({
               return (
                 <div 
                   id="character_right_card" 
-                  className={`w-full md:flex-1 ${rightRarity.bgColor} rounded-2xl md:rounded-3xl border md:border-2 ${rightRarity.borderBg} overflow-hidden shadow-2xl flex flex-col group h-[25vh] md:h-[48vh] max-h-[195px] md:max-h-[430px] relative transition-transform duration-300 hover:scale-[1.01]`}
+                  className={`w-full flex-1 aspect-square md:aspect-square ${rightRarity.bgColor} rounded-xl md:rounded-3xl border md:border-2 ${rightRarity.borderBg} overflow-hidden shadow-2xl flex flex-col group relative transition-transform duration-300 hover:scale-[1.01]`}
                 >
                   {/* Spotlight Background lighting */}
                   <div className={`absolute inset-0 ${rightRarity.radialLights} pointer-events-none z-0`} />
                   
                   {/* Premium FUT Shield Crest Layout */}
-                  <div className="relative w-full h-[65%] md:h-[68%] overflow-hidden bg-gradient-to-b from-transparent to-zinc-950/90 border-b border-white/5 z-10 flex items-center justify-center">
+                  <div className="relative w-full h-[69%] md:h-[73%] overflow-hidden bg-gradient-to-b from-transparent to-zinc-950/90 border-b border-white/5 z-10 flex items-center justify-center">
                     
                     {/* Golden stadium backdrop rays */}
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_0%,transparent_100%)] mix-blend-overlay" />
@@ -821,40 +855,40 @@ export default function PlayScreen({
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-zinc-950/40 z-15 pointer-events-none" />
 
-                    <div className="absolute top-2 md:top-4 left-2 md:left-4 z-25 bg-[#2A7AE8] text-white px-2 md:px-2.5 py-0.5 md:py-1 font-display text-[80%] md:text-[9px] font-black tracking-widest rounded-lg uppercase shadow-md select-none border border-white/15">
+                    <div className="absolute top-1.5 md:top-4 left-1.5 md:left-4 z-25 bg-[#2A7AE8] text-white px-1 md:px-2.5 py-0.5 font-display text-[6.5px] xs:text-[7.5px] md:text-[9.5px] font-black tracking-widest rounded md:rounded-lg uppercase shadow-md select-none border border-white/10">
                       CHALLENGER
                     </div>
 
-                    {/* Dynamic Club and Country Pills (compact on mobile, premium top-right) */}
-                    <div className="absolute top-2 md:top-4 right-2 md:right-4 z-25 flex flex-col gap-1 md:gap-1.5 select-none text-right max-w-[150px] md:max-w-[220px] align-right">
-                      <div className="bg-zinc-950/85 backdrop-blur-md px-2 md:px-[18px] py-0.5 md:py-[5px] rounded-full border border-white/20 flex items-center gap-1 md:gap-2 shadow-lg max-w-[140px] md:max-w-[200px] ml-auto">
-                        <span className="text-xs md:text-sm leading-none flex-shrink-0 select-none">🌍</span>
-                        <span className="text-[9.5px] md:text-[11.5px] font-bold text-zinc-300 truncate text-left tracking-wide">
-                          <span className="hidden md:inline text-zinc-400 font-semibold">Country:</span> {rightChar.category}
+                    {/* Compact Club & Country pills */}
+                    <div className="absolute top-1.5 md:top-4 right-1.5 md:right-4 z-25 flex flex-col gap-0.5 md:gap-1.5 select-none text-right justify-end items-end">
+                      <div className="bg-zinc-950/85 backdrop-blur-md px-1 md:px-3 py-0.5 md:py-[5px] rounded-full border border-white/20 flex items-center gap-0.5 md:gap-1.5 shadow-lg max-w-[55px] xs:max-w-[75px] md:max-w-none">
+                        <span className="text-[8px] md:text-sm leading-none flex-shrink-0 select-none">🌍</span>
+                        <span className="text-[6.5px] xs:text-[7.5px] md:text-[11px] font-bold text-zinc-300 truncate tracking-wide">
+                          {rightChar.category}
                         </span>
                       </div>
-                      <div className={`bg-zinc-950/90 backdrop-blur-md px-2 md:px-[18px] py-0.5 md:py-[5px] rounded-full border flex items-center gap-1 md:gap-2 shadow-lg max-w-[140px] md:max-w-[200px] ml-auto ${getUnivPill(rightChar.universe).border}`}>
-                        <span className="text-xs md:text-sm leading-none flex-shrink-0 select-none">⚽</span>
-                        <span className="text-[9.5px] md:text-[11.5px] font-bold truncate text-left tracking-wide" style={{ color: getUnivPill(rightChar.universe).text }}>
-                          <span className="hidden md:inline opacity-75 font-semibold" style={{ color: getUnivPill(rightChar.universe).text }}>Club:</span> {rightChar.universe}
+                      <div className={`bg-zinc-950/90 backdrop-blur-md px-1 md:px-3 py-0.5 md:py-[5px] rounded-full border flex items-center gap-0.5 md:gap-1.5 shadow-lg max-w-[55px] xs:max-w-[75px] md:max-w-none ${getUnivPill(rightChar.universe).border}`}>
+                        <span className="text-[8px] md:text-sm leading-none flex-shrink-0 select-none">⚽</span>
+                        <span className="text-[6.5px] xs:text-[7.5px] md:text-[11px] font-bold truncate tracking-wide" style={{ color: getUnivPill(rightChar.universe).text }}>
+                          {rightChar.universe}
                         </span>
                       </div>
                     </div>
 
-                    <div className="absolute bottom-1.5 md:bottom-4 left-3 md:left-4 right-3 md:right-4 z-20 text-center select-none pointer-events-none">
-                      <h2 className="font-display text-sm xs:text-base md:text-xl lg:text-2xl font-extrabold uppercase italic tracking-tighter text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.95)] line-clamp-1">
+                    <div className="absolute bottom-1 md:bottom-4 left-2 md:left-4 right-2 md:right-4 z-20 text-center select-none pointer-events-none">
+                      <h2 className="font-display text-[9px] xs:text-xs md:text-xl lg:text-2xl font-extrabold uppercase italic tracking-tighter text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.95)] line-clamp-1">
                         {rightChar.name}
                       </h2>
                     </div>
                   </div>
 
                   {/* Rating Section - Question Mark or Shimmering Real Goal matrix */}
-                  <div className="flex-1 bg-zinc-950/50 backdrop-blur-lg flex flex-col items-center justify-center py-1.5 md:py-3 px-2 text-center relative z-20 border-t border-white/5">
-                    <span className="block text-[7.5px] md:text-[9px] text-[#EBEBF5]/40 font-black uppercase tracking-widest mb-0.5 md:mb-1 select-none leading-none">
+                  <div className="flex-1 bg-zinc-950/50 backdrop-blur-lg flex flex-col items-center justify-center py-0.5 md:py-1.5 px-2 text-center relative z-20 border-t border-white/5">
+                    <span className="block text-[6px] md:text-[8px] text-[#EBEBF5]/40 font-black uppercase tracking-widest mb-0.5 select-none leading-none">
                       {activeMode === 'goals' ? '👉 CAREER GOALS' : activeMode === 'assists' ? '👉 MAESTRO ASSISTS' : '👉 MATCHPLAY G+A'}
                     </span>
                     
-                    <div className="perspective-1000 w-full flex items-center justify-center h-[28px] md:h-[38px]">
+                    <div className="perspective-1000 w-full flex items-center justify-center h-[24px] md:h-[38px]">
                       <AnimatePresence mode="wait">
                         {!isRevealed ? (
                           <motion.div
@@ -863,7 +897,7 @@ export default function PlayScreen({
                             animate={{ rotateY: 0, scale: 1, opacity: 1 }}
                             exit={{ rotateY: -180, opacity: 0, scale: 0.8 }}
                             transition={{ duration: 0.35 }}
-                            className="font-display text-xl md:text-3xl font-black text-zinc-450 drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] select-none tracking-widest"
+                            className="font-display text-[9px] xs:text-xs md:text-3xl font-black text-zinc-400 drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] select-none tracking-widest"
                             style={{ backfaceVisibility: 'hidden' }}
                           >
                             ⭐ ? ⭐
@@ -877,8 +911,8 @@ export default function PlayScreen({
                             className="flex items-center gap-1 md:gap-2"
                             style={{ backfaceVisibility: 'hidden' }}
                           >
-                            <span className="text-sm md:text-xl animate-spin" style={{ animationDuration: '4s' }}>⚽</span>
-                            <span className={`font-display text-xl xs:text-2xl md:text-4xl lg:text-5xl font-black bg-gradient-to-r ${rightRarity.color} bg-clip-text text-transparent leading-none select-none tracking-tighter ${rightRarity.textGlow}`}>
+                            <span className="text-[9px] md:text-xl animate-spin" style={{ animationDuration: '4s' }}>⚽</span>
+                            <span className={`font-display text-xs xs:text-base md:text-4xl lg:text-5xl font-black bg-gradient-to-r ${rightRarity.color} bg-clip-text text-transparent leading-none select-none tracking-tighter ${rightRarity.textGlow}`}>
                               {rightVal}
                             </span>
                           </motion.div>
@@ -886,13 +920,9 @@ export default function PlayScreen({
                       </AnimatePresence>
                     </div>
 
-                    {!isRevealed ? (
-                      <span className="block text-[7px] md:text-[8px] font-black text-amber-500/80 uppercase tracking-widest mt-0.5 md:mt-1 animate-pulse">
-                        MAKE HIGHER OR LOWER SELECTION
-                      </span>
-                    ) : (
-                      <span className="hidden sm:block text-[7px] md:text-[8px] font-extrabold text-zinc-500 mt-1 uppercase tracking-wider opacity-75">
-                        📁 Verified Database Matrix
+                    {!isRevealed && (
+                      <span className="block text-[6.5px] md:text-[8px] font-black text-amber-500/80 uppercase tracking-widest mt-0.5 animate-pulse">
+                        CHOOSE HIGHER OR LOWER
                       </span>
                     )}
                   </div>
@@ -903,7 +933,7 @@ export default function PlayScreen({
           </div>
 
           {/* LOWER/HIGHER ACTION DECISIONS PANEL - ALIGNED & PREMIUM */}
-          <div className="w-full max-w-4xl mx-auto mt-3 md:mt-6 px-3 flex flex-col items-center">
+          <div className="w-full max-w-4xl mx-auto mt-2 md:mt-5 px-3 flex flex-col items-center">
             
             <AnimatePresence mode="wait">
               {!isRevealed ? (
@@ -912,33 +942,33 @@ export default function PlayScreen({
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -15 }}
-                  className="w-full flex flex-col sm:flex-row gap-3.5 max-w-2xl px-2"
+                  className="w-full flex flex-row gap-2 max-w-xl px-1"
                 >
                   <button
                     id="guess_higher_btn"
                     onClick={() => handleGuess('higher')}
-                    className="flex-1 min-h-[48px] md:min-h-[60px] bg-gradient-to-r from-[#FF5D42] via-[#E8472A] to-[#C8341A] rounded-2xl font-display flex flex-col items-center justify-center border-b-2 md:border-b-4 border-red-950/80 hover:-translate-y-0.5 active:scale-[0.98] transition-all hover:brightness-110 hover:shadow-[0_0_20px_rgba(232,71,42,0.45)] text-white shadow-xl cursor-pointer px-4 py-1.5 md:py-2"
+                    className="flex-1 h-10 xs:h-11 md:h-14 bg-gradient-to-r from-[#FF5D42] via-[#E8472A] to-[#C8341A] rounded-xl md:rounded-2xl font-display flex flex-col items-center justify-center border-b-[3px] md:border-b-4 border-red-950/80 hover:-translate-y-0.5 active:scale-[0.98] transition-all hover:brightness-110 hover:shadow-[0_0_20px_rgba(232,71,42,0.45)] text-white shadow-xl cursor-pointer px-2.5 py-1"
                   >
-                    <div className="flex items-center gap-1.5 md:gap-2 font-black text-xs md:text-base tracking-widest">
+                    <div className="flex items-center gap-1 font-black text-xs md:text-base tracking-widest">
                       <span>🔺</span>
                       <span>HIGHER</span>
                     </div>
-                    <span className="hidden xs:block text-[9px] md:text-[10px] uppercase font-sans font-bold text-white/90 tracking-wider mt-0.5">
-                      Challenger stat is higher than base ref
+                    <span className="hidden sm:block text-[9px] md:text-[10px] uppercase font-sans font-bold text-white/90 tracking-wider mt-0.5">
+                      Challenger is higher than base ref
                     </span>
                   </button>
 
                   <button
                     id="guess_lower_btn"
                     onClick={() => handleGuess('lower')}
-                    className="flex-1 min-h-[48px] md:min-h-[60px] bg-gradient-to-r from-[#4E94FF] via-[#2A7AE8] to-[#145CBE] rounded-2xl font-display flex flex-col items-center justify-center border-b-2 md:border-b-4 border-blue-950/80 hover:-translate-y-0.5 active:scale-[0.98] transition-all hover:brightness-110 hover:shadow-[0_0_20px_rgba(42,122,232,0.45)] text-white shadow-xl cursor-pointer px-4 py-1.5 md:py-2"
+                    className="flex-1 h-10 xs:h-11 md:h-14 bg-gradient-to-r from-[#4E94FF] via-[#2A7AE8] to-[#145CBE] rounded-xl md:rounded-2xl font-display flex flex-col items-center justify-center border-b-[3px] md:border-b-4 border-blue-950/80 hover:-translate-y-0.5 active:scale-[0.98] transition-all hover:brightness-110 hover:shadow-[0_0_20px_rgba(42,122,232,0.45)] text-white shadow-xl cursor-pointer px-2.5 py-1"
                   >
-                    <div className="flex items-center gap-1.5 md:gap-2 font-black text-xs md:text-base tracking-widest">
+                    <div className="flex items-center gap-1 font-black text-xs md:text-base tracking-widest">
                       <span>🔻</span>
                       <span>LOWER</span>
                     </div>
-                    <span className="hidden xs:block text-[9px] md:text-[10px] uppercase font-sans font-bold text-white/90 tracking-wider mt-0.5">
-                      Challenger stat is lower than base ref
+                    <span className="hidden sm:block text-[9px] md:text-[10px] uppercase font-sans font-bold text-white/90 tracking-wider mt-0.5">
+                      Challenger is lower than base ref
                     </span>
                   </button>
                 </motion.div>
@@ -948,25 +978,25 @@ export default function PlayScreen({
                   initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.95, opacity: 0 }}
-                  className="w-full bg-zinc-950/90 border-2 border-white/10 p-4 rounded-2xl shadow-2xl flex flex-col items-center gap-3 max-w-md mx-auto relative overflow-hidden"
+                  className="w-full bg-zinc-950/90 border border-white/10 p-2.5 md:p-4 rounded-xl md:rounded-2xl shadow-2xl flex flex-col items-center gap-2 max-w-md mx-auto relative overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
                   
-                  <div className="flex items-center gap-4 relative z-10 w-full text-left">
+                  <div className="flex items-center gap-3 relative z-10 w-full text-left">
                     {isCorrect ? (
-                      <div className="w-12 h-12 rounded-full bg-green/10 text-green border border-green/30 flex justify-center items-center shadow-lg animate-bounce">
-                        <Check className="w-7 h-7 stroke-[3.5]" />
+                      <div className="w-9 h-9 md:w-12 md:h-12 rounded-full bg-green/10 text-green border border-green/30 flex justify-center items-center shadow-lg">
+                        <Check className="w-5 h-5 md:w-7 md:h-7 stroke-[3.5]" />
                       </div>
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-red/10 text-red border border-red/30 flex justify-center items-center shadow-lg">
-                        <X className="w-7 h-7 stroke-[3.5]" />
+                      <div className="w-9 h-9 md:w-12 md:h-12 rounded-full bg-red/10 text-red border border-red/30 flex justify-center items-center shadow-lg">
+                        <X className="w-5 h-5 md:w-7 md:h-7 stroke-[3.5]" />
                       </div>
                     )}
                     <div>
-                      <h4 className={`font-sans font-black text-base tracking-wider uppercase ${isCorrect ? 'text-green text-glow' : 'text-red'}`}>
+                      <h4 className={`font-sans font-black text-[10px] md:text-sm tracking-wider uppercase ${isCorrect ? 'text-green text-glow' : 'text-red'}`}>
                         {isCorrect ? '🏆 TACTICAL MASTERCLASS!' : '💔 BLUNDER OF THE SEASON!'}
                       </h4>
-                      <p className="font-sans text-xs text-zinc-300 font-medium">
+                      <p className="font-sans text-[9px] md:text-xs text-zinc-300 font-medium">
                         {isCorrect ? `Live streak extended to ${streak} hits 🔥` : `Decision failure! Streak has been fully reset.`}
                       </p>
                     </div>
@@ -979,10 +1009,10 @@ export default function PlayScreen({
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.2 }}
                       onClick={handleNextRound}
-                      className="w-full bg-gradient-to-r from-amber-500 to-[#E8472A] hover:from-amber-400 hover:to-[#ff5c3e] text-white py-3 px-5 rounded-xl font-sans font-black text-xs tracking-widest uppercase transition-all shadow-lg active:scale-97 flex items-center justify-center gap-2 cursor-pointer mt-1 relative z-10"
+                      className="w-full bg-gradient-to-r from-amber-500 to-[#E8472A] hover:from-amber-400 hover:to-[#ff5c3e] text-white py-2 md:py-3 px-4 rounded-lg md:rounded-xl font-sans font-black text-[10px] md:text-xs tracking-widest uppercase transition-all shadow-lg active:scale-97 flex items-center justify-center gap-1.5 cursor-pointer mt-0.5 relative z-10"
                     >
                       <span>NEXT CONTESTANT</span>
-                      <Sparkles className="w-4 h-4 text-white animate-spin" style={{ animationDuration: '6s' }} />
+                      <Sparkles className="w-3.5 h-3.5 text-white animate-spin" style={{ animationDuration: '6s' }} />
                     </motion.button>
                   )}
                 </motion.div>
@@ -1042,58 +1072,50 @@ export default function PlayScreen({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-zinc-950/95 z-55 flex items-center justify-center p-4 backdrop-blur-md"
+            className="fixed inset-0 bg-zinc-950/70 z-55 flex items-center justify-center p-4 backdrop-blur-sm"
           >
             <motion.div
-              initial={{ scale: 0.95, y: 25 }}
+              initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 25 }}
-              className="bg-gradient-to-b from-[#14151B] to-[#0D0D11] border border-white/10 rounded-2xl md:rounded-3xl p-5 md:p-8 max-w-sm md:max-w-md w-full text-center relative shadow-2xl shadow-black overflow-hidden"
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-gradient-to-b from-[#14151B]/90 to-[#0D0D11]/90 border border-white/10 rounded-2xl p-4 md:p-6 max-w-[310px] md:max-w-sm w-full text-center relative shadow-2xl shadow-black overflow-hidden backdrop-blur-md"
             >
               {/* Golden circular arena light behind game over card */}
-              <div className="absolute top-[-50%] left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-[radial-gradient(circle,rgba(232,71,42,0.15)_0%,transparent_70%)] blur-2xl" />
+              <div className="absolute top-[-50%] left-1/2 -translate-x-1/2 w-48 h-48 rounded-full bg-[radial-gradient(circle,rgba(232,71,42,0.12)_0%,transparent_70%)] blur-xl" />
 
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 text-black flex justify-center items-center shadow-2xl shadow-amber-500/20">
-                <Trophy className="w-5 h-5 md:w-8 md:h-8 font-black animate-bounce" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 text-black flex justify-center items-center shadow-lg shadow-amber-500/20">
+                <Trophy className="w-5 h-5 md:w-6 md:h-6 font-black animate-bounce" />
               </div>
 
-              <h2 className="font-display text-2xl md:text-3xl text-primary font-black mt-4 md:mt-6 tracking-tight italic">FULL TIME!</h2>
-              <p className="font-sans text-[9px] md:text-[10px] text-zinc-500 tracking-widest uppercase mb-4 md:mb-6 font-black">tactical blunder review</p>
+              <h2 className="font-display text-xl md:text-2xl text-primary font-black mt-3 md:mt-4 tracking-tight italic">FULL TIME!</h2>
+              <p className="font-sans text-[8px] md:text-[9px] text-zinc-550 tracking-widest uppercase mb-3 md:mb-5 font-black">tactical blunder review</p>
 
-              <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">
-                <div className="bg-zinc-950/80 p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5">
-                  <span className="font-sans text-[9px] md:text-[10px] text-zinc-400 uppercase block tracking-wider font-bold">STREAK SCORE</span>
-                  <span className="font-display text-3xl md:text-4xl text-[#E8472A] font-black mt-0.5 md:mt-1 block tracking-tighter">{streak}</span>
+              <div className="grid grid-cols-2 gap-2 md:gap-3 mb-3 md:mb-5">
+                <div className="bg-zinc-950/80 p-2.5 md:p-3 rounded-xl border border-white/5">
+                  <span className="font-sans text-[8px] md:text-[9px] text-zinc-400 uppercase block tracking-wider font-bold">STREAK SCORE</span>
+                  <span className="font-display text-2xl md:text-3xl text-[#E8472A] font-black mt-0.5 block tracking-tighter">{streak}</span>
                 </div>
-                <div className="bg-zinc-950/80 p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5">
-                  <span className="font-sans text-[9px] md:text-[10px] text-zinc-400 uppercase block tracking-wider font-bold">PERSONAL BEST</span>
-                  <span className="font-display text-3xl md:text-4xl text-[#F5C842] font-black mt-0.5 md:mt-1 block tracking-tighter">{bestStreak}</span>
+                <div className="bg-zinc-950/80 p-2.5 md:p-3 rounded-xl border border-white/5">
+                  <span className="font-sans text-[8px] md:text-[9px] text-zinc-400 uppercase block tracking-wider font-bold">PERSONAL BEST</span>
+                  <span className="font-display text-2xl md:text-3xl text-[#F5C842] font-black mt-0.5 block tracking-tighter">{bestStreak}</span>
                 </div>
               </div>
 
-              <div className="bg-zinc-950/50 border border-white/5 p-3 md:p-4 rounded-xl md:rounded-2xl text-left mb-4 md:mb-6">
-                <span className="font-sans text-[8px] md:text-[9px] text-[#FF5D42] uppercase tracking-widest block mb-0.5 md:mb-1 font-black">CRITICAL FAILURE MATCH</span>
-                <p className="font-sans text-xs text-zinc-300 font-semibold tracking-tight">
+              <div className="bg-zinc-950/50 border border-white/5 p-2.5 md:p-3 rounded-xl text-left mb-4 md:mb-5">
+                <span className="font-sans text-[8px] md:text-[9px] text-[#FF5D42] uppercase tracking-widest block mb-0.5 font-black">CRITICAL FAILURE MATCH</span>
+                <p className="font-sans text-[11px] md:text-xs text-zinc-300 font-semibold tracking-tight leading-snug">
                   {tragicDecisionLine}
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2 relative z-10">
+              <div className="flex flex-col gap-2 relative z-10 p-0.5">
                 <button
                   id="game_over_play_again"
                   onClick={handlePlayAgain}
-                  className="w-full h-11 md:h-12 bg-gradient-to-r from-[#FF5D42] to-[#E8472A] hover:brightness-110 active:scale-97 text-white font-sans font-black text-xs tracking-widest uppercase rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full h-10 md:h-11 bg-gradient-to-r from-[#FF5D42] to-[#E8472A] hover:brightness-110 active:scale-97 text-white font-sans font-black text-xs tracking-widest uppercase rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <RotateCcw className="w-4 h-4 stroke-[3]" />
+                  <RotateCcw className="w-3.5 h-3.5 stroke-[3]" />
                   <span>PLAY NEXT ROUND</span>
-                </button>
-
-                <button
-                  onClick={handleShare}
-                  className="w-full h-11 md:h-12 bg-zinc-950 hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all font-sans font-bold text-xs tracking-widest uppercase rounded-xl border border-white/5 flex items-center justify-center gap-2 cursor-pointer shadow-inner"
-                >
-                  <Share2 className="w-4 h-4" />
-                  <span>SHARE SCOREBOARD</span>
                 </button>
               </div>
             </motion.div>

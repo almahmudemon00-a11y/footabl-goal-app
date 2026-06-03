@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Flame, Award, Shield, MessageSquare, Share2, Flag, Search, PlusCircle, Pin, Activity, Bell, 
   CheckCircle2, Users, AlertCircle, Clock, Send, Sparkles, SlidersHorizontal, HelpCircle, 
-  Trash2, Edit, ChevronRight, X, Heart, ShieldAlert, BadgeInfo, Play, ThumbsUp, ThumbsDown
+  Trash2, Edit, ChevronRight, X, Heart, ShieldAlert, BadgeInfo, Play, ThumbsUp, ThumbsDown,
+  ChevronDown, ChevronUp, Check
 } from 'lucide-react';
 import { Thread, Comment, User, ReplyComment, Report } from '../types.ts';
 
@@ -92,6 +93,89 @@ export default function CommunityScreen({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortOption, setSortOption] = useState<'newest' | 'likes' | 'active'>('newest');
+
+  // New Category Dropdown Systems
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState<boolean>(false);
+  const [categorySearchQuery, setCategorySearchQuery] = useState<string>('');
+  const [recentlyUsedCategories, setRecentlyUsedCategories] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('recent_categories');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [keyboardSelectedIndex, setKeyboardSelectedIndex] = useState<number>(-1);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Filtered categories lists for internal drop search
+  const filteredCategoriesList = useMemo(() => {
+    const term = categorySearchQuery.trim().toLowerCase();
+    if (!term) return categories;
+    return categories.filter(c => c.toLowerCase().includes(term));
+  }, [categories, categorySearchQuery]);
+
+  const handleSelectCategory = (cat: string | null) => {
+    setSelectedCategory(cat);
+    setIsCategoryDropdownOpen(false);
+    setCategorySearchQuery('');
+    setKeyboardSelectedIndex(-1);
+    
+    if (cat) {
+      setRecentlyUsedCategories((prev) => {
+        const filtered = prev.filter((item) => item !== cat);
+        const updated = [cat, ...filtered].slice(0, 3);
+        try {
+          localStorage.setItem('recent_categories', JSON.stringify(updated));
+        } catch {
+          // No-op
+        }
+        return updated;
+      });
+    }
+  };
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Keyboard navigation for keys
+  useEffect(() => {
+    if (!isCategoryDropdownOpen) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      const totalItems = filteredCategoriesList.length + 1; // +1 to represent 'All Categories'
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setKeyboardSelectedIndex(prev => (prev + 1) % totalItems);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setKeyboardSelectedIndex(prev => (prev - 1 + totalItems) % totalItems);
+      } else if (e.key === 'Escape') {
+        setIsCategoryDropdownOpen(false);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (keyboardSelectedIndex === 0) {
+          handleSelectCategory(null);
+        } else if (keyboardSelectedIndex > 0 && keyboardSelectedIndex <= filteredCategoriesList.length) {
+          handleSelectCategory(filteredCategoriesList[keyboardSelectedIndex - 1]);
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isCategoryDropdownOpen, filteredCategoriesList, keyboardSelectedIndex]);
 
   // UI Modals / Intermediates
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
@@ -1385,41 +1469,174 @@ export default function CommunityScreen({
             </div>
 
             {/* Dynamic & Managed list of Categories menu */}
-            <div className="p-4 bg-zinc-950/50 border border-zinc-900 rounded-2xl">
-              <h4 className="text-xs font-extrabold text-amber-500 mb-3 uppercase tracking-wider">
-                Arena Rooms
-              </h4>
-              <div className="flex flex-col gap-1 text-left">
+            <div ref={categoryDropdownRef} className="relative w-full">
+              <div className="bg-zinc-950/50 border border-zinc-900 hover:border-zinc-800/80 rounded-2xl p-3 flex flex-col gap-2 transition-all">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] font-extrabold text-amber-500/80 uppercase tracking-widest flex items-center gap-1.5">
+                    <SlidersHorizontal className="w-3 h-3 text-amber-500/85" /> Arena Rooms
+                  </h4>
+                  {selectedCategory && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectCategory(null);
+                      }}
+                      className="text-[9px] font-bold text-zinc-500 hover:text-amber-400 transition uppercase tracking-wider cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                
                 <button
-                  onClick={() => setSelectedCategory(null)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
-                    selectedCategory === null 
-                      ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border border-amber-500/35 text-amber-300 font-extrabold' 
-                      : 'text-zinc-400 hover:bg-zinc-900/40 border border-transparent'
+                  id="category-dropdown-trigger"
+                  type="button"
+                  onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                  className={`w-full h-10 px-3.5 bg-zinc-900/90 hover:bg-zinc-900 text-zinc-100 border rounded-xl text-xs font-bold tracking-wide transition-all flex items-center justify-between cursor-pointer outline-none select-none ${
+                    isCategoryDropdownOpen 
+                      ? 'border-amber-500/50 shadow-md ring-1 ring-amber-500/20' 
+                      : 'border-zinc-800/80 hover:border-zinc-700'
                   }`}
                 >
-                  <span>🌐 All Categories</span>
-                  <span className="text-[10px] font-mono opacity-60">({posts.length})</span>
+                  <span className="truncate flex items-center gap-2">
+                    {selectedCategory ? (
+                      <span className="text-amber-300 font-extrabold">{selectedCategory}</span>
+                    ) : (
+                      <span className="text-[#ffa83e] font-extrabold">🌐 All Categories</span>
+                    )}
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                    <span className="text-[10px] opacity-50 bg-zinc-800/60 px-1.5 py-0.5 rounded text-zinc-400 font-mono">
+                      {selectedCategory ? posts.filter(p => p.category === selectedCategory).length : posts.length}
+                    </span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-250 ${isCategoryDropdownOpen ? 'rotate-180 text-amber-500' : ''}`} />
+                  </div>
                 </button>
-
-                {categories.map((cat) => {
-                  const num = posts.filter(p => p.category === cat).length;
-                  return (
-                    <button
-                      key={cat}
-                      onClick={() => setSelectedCategory(cat)}
-                      className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
-                        selectedCategory === cat 
-                          ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border border-amber-500/35 text-amber-300 font-extrabold' 
-                          : 'text-zinc-400 hover:bg-zinc-900/40 border border-transparent'
-                      }`}
-                    >
-                      <span className="truncate">{cat}</span>
-                      <span className="text-[10px] font-mono opacity-60">({num})</span>
-                    </button>
-                  );
-                })}
               </div>
+
+              {/* Dropdown Popover List */}
+              <AnimatePresence>
+                {isCategoryDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4, scale: 0.99 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, scale: 0.99 }}
+                    transition={{ duration: 0.25 }}
+                    className="absolute z-50 left-0 right-0 mt-1 max-h-96 bg-zinc-950/98 border border-zinc-800/90 rounded-2xl shadow-2xl p-1.5 flex flex-col gap-1.5 backdrop-blur-xl"
+                  >
+                    {/* Search Field */}
+                    <div className="relative p-1">
+                      <input
+                        type="text"
+                        placeholder="Search rooms..."
+                        value={categorySearchQuery}
+                        onChange={(e) => setCategorySearchQuery(e.target.value)}
+                        className="w-full text-zinc-100 placeholder-zinc-500 text-xs bg-zinc-900 border border-zinc-850 rounded-xl py-2 px-3 pl-8 focus:outline-none focus:border-amber-500/40 transition-all text-left"
+                        autoFocus
+                      />
+                      <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-3.5" />
+                      {categorySearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setCategorySearchQuery('')}
+                          className="absolute right-3 top-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded text-[9px] font-bold"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Recently Used Section */}
+                    {recentlyUsedCategories.length > 0 && !categorySearchQuery && (
+                      <div className="px-2 py-1.5 border-b border-zinc-900/60 mb-0.5">
+                        <span className="text-[9px] font-extrabold text-[#ffa83e]/60 uppercase tracking-widest flex items-center gap-1 mb-1.5">
+                          <Clock className="w-2.5 h-2.5 text-amber-500/65" /> Recent Rooms
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {recentlyUsedCategories.map((recentCat) => {
+                            const count = posts.filter(p => p.category === recentCat).length;
+                            return (
+                              <button
+                                type="button"
+                                key={recentCat}
+                                onClick={() => handleSelectCategory(recentCat)}
+                                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                                  selectedCategory === recentCat
+                                    ? 'bg-amber-500/10 text-amber-300 border border-amber-500/25'
+                                    : 'bg-zinc-900/90 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-200 border border-transparent'
+                                }`}
+                              >
+                                <span>{recentCat}</span>
+                                <span className="text-[8px] opacity-50 font-mono">({count})</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-1 max-h-60 overflow-y-auto pr-1">
+                      {/* All Categories Option */}
+                      <button
+                        type="button"
+                        onClick={() => handleSelectCategory(null)}
+                        className={`text-left w-full px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                          selectedCategory === null
+                            ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 text-amber-300 font-extrabold border-l-2 border-amber-500'
+                            : keyboardSelectedIndex === 0
+                            ? 'bg-zinc-900 text-zinc-100 border-l-2 border-zinc-700'
+                            : 'text-zinc-400 hover:bg-zinc-900/40 border-l-2 border-transparent'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>🌐 All Categories</span>
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono opacity-50 bg-zinc-900 px-1 rounded text-zinc-400">({posts.length})</span>
+                          {selectedCategory === null && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                        </div>
+                      </button>
+
+                      {/* Filtered Categories */}
+                      {filteredCategoriesList.length === 0 ? (
+                        <div className="px-3 py-6 text-center text-zinc-500 text-xs">
+                          No category matches your search.
+                        </div>
+                      ) : (
+                        filteredCategoriesList.map((cat, idx) => {
+                          const finalIdx = idx + 1; // offset because 'All Categories' is first
+                          const num = posts.filter(p => p.category === cat).length;
+                          const isSelected = selectedCategory === cat;
+                          const isFocused = keyboardSelectedIndex === finalIdx;
+
+                          return (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => handleSelectCategory(cat)}
+                              className={`text-left w-full px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                                isSelected
+                                  ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 text-amber-300 font-extrabold border-l-2 border-amber-500'
+                                  : isFocused
+                                  ? 'bg-zinc-900 text-zinc-100 border-l-2 border-zinc-700'
+                                  : 'text-zinc-400 hover:bg-zinc-900/40 border-l-2 border-transparent'
+                              }`}
+                            >
+                              <span className="truncate flex items-center gap-2">
+                                <span className="truncate">{cat}</span>
+                              </span>
+                              <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                                <span className="text-[10px] font-mono opacity-50 bg-zinc-900 px-1 rounded text-zinc-400">({num})</span>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
           </div>
@@ -1824,7 +2041,7 @@ export default function CommunityScreen({
                           className="flex items-center gap-1.5 text-zinc-500 hover:text-amber-400 transition"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
-                          <span>{post.commentsCount || 0} Discussions</span>
+                          <span>{post.commentsCount || 0}</span>
                         </button>
 
                         {/* Report Post Trigger */}
