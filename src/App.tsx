@@ -30,10 +30,11 @@ import { db, auth, googleProvider, handleFirestoreError, OperationType } from '.
 import PlayScreen from './components/PlayScreen.tsx';
 import CommunityScreen from './components/CommunityScreen.tsx';
 import ProfileScreen from './components/ProfileScreen.tsx';
+import SettingsScreen from './components/SettingsScreen.tsx';
 
 export default function App() {
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'play' | 'community' | 'profile'>('play');
+  const [activeTab, setActiveTab] = useState<'play' | 'community' | 'profile' | 'settings'>('play');
   
   // Secondary target to auto-activate inside Community Tab on redirect
   const [communityExpandTargetCharId, setCommunityExpandTargetCharId] = useState<string | undefined>(undefined);
@@ -846,6 +847,24 @@ export default function App() {
     }
   };
 
+  const handleResetStats = () => {
+    localStorage.setItem('bestStreak', '0');
+    localStorage.setItem('gamesPlayed', '0');
+    localStorage.setItem('correctGuesses', '0');
+    localStorage.setItem('totalGuesses', '0');
+    localStorage.setItem('mode_goals', '0');
+    localStorage.setItem('mode_assists', '0');
+    localStorage.setItem('mode_gAndA', '0');
+    localStorage.setItem('favoriteUniverse', 'Goals');
+    setStats({
+      bestStreak: 0,
+      gamesPlayed: 0,
+      correctGuesses: 0,
+      totalGuesses: 0,
+      favoriteUniverse: 'Goals',
+    });
+  };
+
   // Change username directly in Firestore backwall
   const handleUpdateUsername = async (newName: string): Promise<boolean> => {
     try {
@@ -1042,6 +1061,8 @@ export default function App() {
           >
             PROFILE
           </button>
+
+
         </nav>
 
         {/* Right Corner: Theme Toggle & Mini auth profile */}
@@ -1053,14 +1074,19 @@ export default function App() {
             <span className="font-display font-black text-xs text-[#F5C842]">{stats.bestStreak}</span>
           </div>
 
-          {/* Day/Night slider mode */}
+          {/* Settings Button */}
           <button
             id="theme_toggle_btn"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="w-9 h-9 items-center justify-center flex rounded-full border border-primary-border hover:bg-card-hover text-secondary hover:text-primary transition-all active:scale-90"
-            title="Toggle color theme"
+            onClick={() => {
+              setActiveTab('settings');
+              setCommunityExpandTargetCharId(undefined);
+            }}
+            className={`w-9 h-9 items-center justify-center flex rounded-full border border-primary-border hover:bg-card-hover text-secondary hover:text-primary transition-all active:scale-90 ${
+              activeTab === 'settings' ? 'bg-[#E8472A]/15 text-[#E8472A] border-[#E8472A]' : ''
+            }`}
+            title="Settings"
           >
-            {theme === 'dark' ? <Sun className="w-4 h-4 text-gold" /> : <Moon className="w-4 h-4 text-zinc-700" />}
+            <Settings className="w-4 h-4" />
           </button>
 
           {/* User mini box */}
@@ -1112,6 +1138,8 @@ export default function App() {
           <User className="w-5 h-5" />
           <span className="text-[10px] font-sans">Profile</span>
         </button>
+
+
       </nav>
 
       {/* RENDER CURRENT ACTIVE VIEWPORT */}
@@ -1152,6 +1180,13 @@ export default function App() {
             onUpdateUsername={handleUpdateUsername}
             checkIfUsernameTaken={checkIfUsernameTaken}
             searchUserByUsername={searchUserByUsername}
+          />
+        )}
+
+        {activeTab === 'settings' && (
+          <SettingsScreen
+            theme={theme}
+            onThemeToggle={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           />
         )}
       </main>

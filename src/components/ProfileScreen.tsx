@@ -276,7 +276,7 @@ export default function ProfileScreen({
 
               <div className="text-left">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-display text-xl md:text-2xl text-primary font-bold">
+                  <h2 className="font-sans text-xl md:text-2xl text-primary font-bold">
                     {activeUser.username || activeUser.guestId}
                   </h2>
                   
@@ -513,7 +513,7 @@ export default function ProfileScreen({
                 className="bg-[#E8472A] hover:bg-[#ff5d42] active:scale-95 text-white text-xs font-sans font-bold px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                <span>Claim Striker Nickname</span>
+                <span>Sign in</span>
               </button>
               <button
                 id="profile_logout_guest_btn"
