@@ -56,6 +56,9 @@ export default function ProfileScreen({
   // Taken username popup state
   const [popupAlert, setPopupAlert] = useState<{ message: string } | null>(null);
 
+  // Authentication in-progress pending state
+  const [isAuthPending, setIsAuthPending] = useState<boolean>(false);
+
   // Handler for Profile Search
   const handleSearch = async () => {
     const trimmed = searchQuery.trim();
@@ -151,18 +154,29 @@ export default function ProfileScreen({
 
   const handleClaimSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAuthPending) return;
     if (validateUsername(claimedUsernameInput)) {
       const trimmed = claimedUsernameInput.trim();
-      const isTaken = await checkIfUsernameTaken(trimmed, null);
-      if (isTaken) {
-        setPopupAlert({ message: `The username "${trimmed}" is already taken. Please choose a different handle.` });
-        return;
-      }
-      localStorage.setItem('pending_claimed_username', trimmed);
-      setShowClaimModal(false);
-      const res = await onLogin();
-      if (res && !res.success) {
-        setPopupAlert({ message: res.error || 'Google Authentication failed. Please try again.' });
+      setIsAuthPending(true);
+      try {
+        const isTaken = await checkIfUsernameTaken(trimmed, null);
+        if (isTaken) {
+          setPopupAlert({ message: `The username "${trimmed}" is already taken. Please choose a different handle.` });
+          setIsAuthPending(false);
+          return;
+        }
+        localStorage.setItem('pending_claimed_username', trimmed);
+        const res = await onLogin();
+        if (res && !res.success) {
+          setPopupAlert({ message: res.error || 'Google Authentication failed. Please try again.' });
+        } else {
+          setShowClaimModal(false);
+        }
+      } catch (err: any) {
+        console.error("Claim submit error:", err);
+        setPopupAlert({ message: err?.message || 'Verification error occurred. Please try again.' });
+      } finally {
+        setIsAuthPending(false);
       }
     }
   };
@@ -607,16 +621,18 @@ export default function ProfileScreen({
                 <div className="flex gap-2 justify-end mt-2">
                   <button
                     type="button"
+                    disabled={isAuthPending}
                     onClick={() => setShowClaimModal(false)}
-                    className="font-sans font-bold text-xs text-secondary bg-zinc-950 border border-white/5 hover:border-white/10 px-4 py-2.5 rounded-xl text-center active:scale-95 transition-all"
+                    className="font-sans font-bold text-xs text-secondary bg-zinc-950 border border-white/5 hover:border-white/10 px-4 py-2.5 rounded-xl text-center active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="font-sans font-bold text-xs text-white bg-[#E8472A] hover:bg-[#ff5d42] active:scale-95 px-5 py-2.5 rounded-xl text-center transition-all shadow-md shadow-[#E8472A]/10 cursor-pointer"
+                    disabled={isAuthPending}
+                    className="font-sans font-bold text-xs text-white bg-[#E8472A] hover:bg-[#ff5d42] active:scale-95 px-5 py-2.5 rounded-xl text-center transition-all shadow-md shadow-[#E8472A]/10 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Claim Alias →
+                    {isAuthPending ? 'Signing in...' : 'Claim Alias →'}
                   </button>
                 </div>
               </form>
