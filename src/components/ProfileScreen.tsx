@@ -16,6 +16,7 @@ interface ProfileScreenProps {
   onLogin: () => void;
   onLogout: () => void;
   onUpdateUsername: (newUsername: string) => Promise<boolean>;
+  checkIfUsernameTaken: (usernameToCheck: string, excludeUid: string | null) => Promise<boolean>;
 }
 
 export default function ProfileScreen({
@@ -24,7 +25,8 @@ export default function ProfileScreen({
   comments,
   onLogin,
   onLogout,
-  onUpdateUsername
+  onUpdateUsername,
+  checkIfUsernameTaken
 }: ProfileScreenProps) {
   // Tabs inside Profile: 'stats' or 'my-comments'
   const [activeSubTab, setActiveSubTab] = useState<'stats' | 'comments'>('stats');
@@ -38,6 +40,9 @@ export default function ProfileScreen({
   const [isEditingUsername, setIsEditingUsername] = useState<boolean>(false);
   const [editInputVal, setEditInputVal] = useState<string>(user.username || '');
   const [editError, setEditError] = useState<string | null>(null);
+
+  // Taken username popup state
+  const [popupAlert, setPopupAlert] = useState<{ message: string } | null>(null);
 
   // Extract all comments posted by this user
   const userCommentsList = useMemo(() => {
@@ -106,9 +111,16 @@ export default function ProfileScreen({
     setShowClaimModal(true);
   };
 
-  const handleClaimSubmit = (e: React.FormEvent) => {
+  const handleClaimSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateUsername(claimedUsernameInput)) {
+      const trimmed = claimedUsernameInput.trim();
+      const isTaken = await checkIfUsernameTaken(trimmed, null);
+      if (isTaken) {
+        setPopupAlert({ message: `The username "${trimmed}" is already taken. Please choose a different handle.` });
+        return;
+      }
+      localStorage.setItem('pending_claimed_username', trimmed);
       onLogin();
       setShowClaimModal(false);
     }
@@ -135,6 +147,7 @@ export default function ProfileScreen({
       setIsEditingUsername(false);
     } else {
       setEditError('This username is already taken.');
+      setPopupAlert({ message: `The username "${cleanName}" is already taken. Please choose a different handle.` });
     }
   };
 
@@ -483,6 +496,41 @@ export default function ProfileScreen({
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating alert error popup for taken usernames */}
+      <AnimatePresence>
+        {popupAlert && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-zinc-950/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-[#17171C] border border-[#E8472A]/40 max-w-sm w-full rounded-2xl p-6 text-center shadow-2xl relative"
+            >
+              <div className="w-12 h-12 rounded-full bg-[#E8472A]/10 text-[#E8472A] flex items-center justify-center mx-auto mb-4 border border-[#E8472A]/20">
+                <ShieldAlert className="w-6 h-6 opacity-85" />
+              </div>
+              <h3 className="font-display text-base font-bold text-[#E8472A] uppercase tracking-wider mb-2">
+                Already Taken
+              </h3>
+              <p className="font-sans text-xs text-zinc-300 leading-relaxed mb-6">
+                {popupAlert.message}
+              </p>
+              <button
+                onClick={() => setPopupAlert(null)}
+                className="w-full bg-[#E8472A] hover:bg-[#ff5d42] text-white py-2.5 font-sans font-bold text-xs rounded-xl active:scale-95 transition-all shadow-md cursor-pointer"
+              >
+                Okay, I'll Change It
+              </button>
             </motion.div>
           </motion.div>
         )}

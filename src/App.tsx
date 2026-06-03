@@ -175,6 +175,7 @@ export default function App() {
                           firebaseUser.email === 'almahmudemon00@gmail.com';
       
       if (docSnap.exists()) {
+        localStorage.removeItem('pending_claimed_username');
         const data = docSnap.data();
         const mergedBest = Math.max(stats.bestStreak, data.bestStreak || 0);
         const mergedPlayed = Math.max(stats.gamesPlayed, data.gamesPlayed || 0);
@@ -217,8 +218,20 @@ export default function App() {
           favoriteUniverse: data.favoriteUniverse || 'Goals',
         });
       } else {
-        const baseName = firebaseUser.displayName || 'Player_' + userId.slice(0, 4);
-        const uniqueUsername = await generateUniqueUsername(baseName);
+        const pendingClaimed = localStorage.getItem('pending_claimed_username');
+        let uniqueUsername = '';
+        if (pendingClaimed) {
+          const isTaken = await checkIfUsernameTaken(pendingClaimed, null);
+          if (!isTaken) {
+            uniqueUsername = pendingClaimed;
+          }
+          localStorage.removeItem('pending_claimed_username');
+        }
+        
+        if (!uniqueUsername) {
+          const baseName = firebaseUser.displayName || 'Player_' + userId.slice(0, 4);
+          uniqueUsername = await generateUniqueUsername(baseName);
+        }
         
          const record = {
           userId,
@@ -1079,6 +1092,7 @@ export default function App() {
             onLogin={handleLogin}
             onLogout={handleLogout}
             onUpdateUsername={handleUpdateUsername}
+            checkIfUsernameTaken={checkIfUsernameTaken}
           />
         )}
       </main>
