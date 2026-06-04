@@ -1077,49 +1077,49 @@ export default function PlayScreen({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-zinc-950/70 z-55 flex items-center justify-center p-4 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/45 z-55 flex items-center justify-center p-4 backdrop-blur-[3px]"
           >
             <motion.div
-              initial={{ scale: 0.95, y: 20 }}
+              initial={{ scale: 0.94, y: 8 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-gradient-to-b from-[#14151B]/90 to-[#0D0D11]/90 border border-white/10 rounded-2xl p-4 md:p-6 max-w-[310px] md:max-w-sm w-full text-center relative shadow-2xl shadow-black overflow-hidden backdrop-blur-md"
+              exit={{ scale: 0.94, y: 8 }}
+              className="bg-zinc-950/45 border border-white/10 backdrop-blur-md max-w-[250px] w-full rounded-2xl p-4 text-center shadow-2xl relative overflow-hidden flex flex-col items-center justify-center"
             >
-              {/* Golden circular arena light behind game over card */}
-              <div className="absolute top-[-50%] left-1/2 -translate-x-1/2 w-48 h-48 rounded-full bg-[radial-gradient(circle,rgba(232,71,42,0.12)_0%,transparent_70%)] blur-xl" />
+              {/* Sunset themed divider thread */}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-red-500/80 via-orange-400/80 to-amber-300/80 opacity-90" />
 
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 text-black flex justify-center items-center shadow-lg shadow-amber-500/20">
-                <Trophy className="w-5 h-5 md:w-6 md:h-6 font-black animate-bounce" />
+              <div className="w-9 h-9 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mb-2 border border-amber-500/25 shadow-inner flex-shrink-0 animate-bounce">
+                <Trophy className="w-4.5 h-4.5" />
               </div>
 
-              <h2 className="font-display text-xl md:text-2xl text-primary font-black mt-3 md:mt-4 tracking-tight italic">FULL TIME!</h2>
-              <p className="font-sans text-[8px] md:text-[9px] text-zinc-550 tracking-widest uppercase mb-3 md:mb-5 font-black">tactical blunder review</p>
+              <h2 className="font-display text-sm font-black text-zinc-100 tracking-tight uppercase italic mb-0.5">FULL TIME!</h2>
+              <p className="font-mono text-[7px] text-zinc-500 uppercase tracking-widest mb-3 font-semibold">tactical blunder review</p>
 
-              <div className="grid grid-cols-2 gap-2 md:gap-3 mb-3 md:mb-5">
-                <div className="bg-zinc-950/80 p-2.5 md:p-3 rounded-xl border border-white/5">
-                  <span className="font-sans text-[8px] md:text-[9px] text-zinc-400 uppercase block tracking-wider font-bold">STREAK SCORE</span>
-                  <span className="font-display text-2xl md:text-3xl text-[#E8472A] font-black mt-0.5 block tracking-tighter">{streak}</span>
+              <div className="grid grid-cols-2 gap-2 w-full mb-3 flex-shrink-0">
+                <div className="bg-zinc-950/30 p-2 rounded-xl border border-white/5 flex flex-col items-center justify-center">
+                  <span className="font-sans text-[7px] text-zinc-400 uppercase block tracking-wider font-semibold">STREAK</span>
+                  <span className="font-display text-base text-red-400 font-extrabold mt-0.5 block tracking-tighter leading-none">{streak}</span>
                 </div>
-                <div className="bg-zinc-950/80 p-2.5 md:p-3 rounded-xl border border-white/5">
-                  <span className="font-sans text-[8px] md:text-[9px] text-zinc-400 uppercase block tracking-wider font-bold">PERSONAL BEST</span>
-                  <span className="font-display text-2xl md:text-3xl text-[#F5C842] font-black mt-0.5 block tracking-tighter">{bestStreak}</span>
+                <div className="bg-zinc-950/30 p-2 rounded-xl border border-white/5 flex flex-col items-center justify-center">
+                  <span className="font-sans text-[7px] text-zinc-400 uppercase block tracking-wider font-semibold">BEST</span>
+                  <span className="font-display text-base text-yellow-500 font-extrabold mt-0.5 block tracking-tighter leading-none">{bestStreak}</span>
                 </div>
               </div>
 
-              <div className="bg-zinc-950/50 border border-white/5 p-2.5 md:p-3 rounded-xl text-left mb-4 md:mb-5">
-                <span className="font-sans text-[8px] md:text-[9px] text-[#FF5D42] uppercase tracking-widest block mb-0.5 font-black">CRITICAL FAILURE MATCH</span>
-                <p className="font-sans text-[11px] md:text-xs text-zinc-300 font-semibold tracking-tight leading-snug">
+              <div className="bg-zinc-950/30 border border-white/5 p-2 rounded-lg text-left mb-3 w-full max-h-[85px] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-800 flex-shrink-0">
+                <span className="font-mono text-[6.5px] text-red-400 uppercase tracking-widest block mb-0.5 font-bold">DECISION FAULT</span>
+                <p className="font-sans text-[10px] text-zinc-300 font-semibold tracking-tight leading-snug break-words whitespace-normal">
                   {tragicDecisionLine}
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2 relative z-10 p-0.5">
+              <div className="w-full relative z-10 flex-shrink-0">
                 <button
                   id="game_over_play_again"
                   onClick={handlePlayAgain}
-                  className="w-full h-10 md:h-11 bg-gradient-to-r from-[#FF5D42] to-[#E8472A] hover:brightness-110 active:scale-97 text-white font-sans font-black text-xs tracking-widest uppercase rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full h-8 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 hover:brightness-110 active:scale-97 text-white font-sans font-extrabold text-[9px] tracking-wider uppercase rounded-lg transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <RotateCcw className="w-3.5 h-3.5 stroke-[3]" />
+                  <RotateCcw className="w-3 h-3 stroke-[2.5]" />
                   <span>PLAY NEXT ROUND</span>
                 </button>
               </div>

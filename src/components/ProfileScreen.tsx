@@ -648,28 +648,33 @@ export default function ProfileScreen({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-zinc-950/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/30 z-[100] flex items-center justify-center p-4 backdrop-blur-[2px]"
           >
             <motion.div
-              initial={{ scale: 0.95, y: 15 }}
+              initial={{ scale: 0.94, y: 8 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              className="bg-[#17171C] border border-[#E8472A]/40 max-w-sm w-full rounded-2xl p-6 text-center shadow-2xl relative"
+              exit={{ scale: 0.94, y: 8 }}
+              className="bg-zinc-950/45 border border-white/10 backdrop-blur-md max-w-[240px] w-full rounded-xl p-4 text-center shadow-xl relative overflow-hidden flex flex-col items-center justify-center"
             >
-              <div className="w-12 h-12 rounded-full bg-[#E8472A]/10 text-[#E8472A] flex items-center justify-center mx-auto mb-4 border border-[#E8472A]/20">
-                <ShieldAlert className="w-6 h-6 opacity-85" />
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-red-500/80 via-orange-400/80 to-amber-300/80 opacity-90" />
+              
+              <div className="w-8 h-8 rounded-full bg-red-950/30 text-red-400 flex items-center justify-center mb-2.5 border border-red-500/20 shadow-inner flex-shrink-0">
+                <ShieldAlert className="w-4 h-4 opacity-90" />
               </div>
-              <h3 className="font-display text-base font-bold text-[#E8472A] uppercase tracking-wider mb-2">
-                Already Taken
+              
+              <h3 className="font-display text-xs font-semibold text-zinc-100 tracking-wide mb-1 flex-shrink-0">
+                Notice Info
               </h3>
-              <p className="font-sans text-xs text-zinc-300 leading-relaxed mb-6">
+              
+              <p className="font-sans text-[10px] text-zinc-300 leading-normal mb-3 w-full break-words whitespace-normal">
                 {popupAlert.message}
               </p>
+              
               <button
                 onClick={() => setPopupAlert(null)}
-                className="w-full bg-[#E8472A] hover:bg-[#ff5d42] text-white py-2.5 font-sans font-bold text-xs rounded-xl active:scale-95 transition-all shadow-md cursor-pointer"
+                className="w-full bg-red-500/10 hover:bg-red-500/15 text-red-400 border border-red-500/20 py-1.5 font-sans font-medium text-[10px] rounded active:scale-95 transition-all cursor-pointer flex-shrink-0"
               >
-                Okay, I'll Change It
+                Understood
               </button>
             </motion.div>
           </motion.div>
