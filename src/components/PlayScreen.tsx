@@ -978,26 +978,33 @@ export default function PlayScreen({
                   initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.95, opacity: 0 }}
-                  className="w-full bg-zinc-950/90 border border-white/10 p-2.5 md:p-4 rounded-xl md:rounded-2xl shadow-2xl flex flex-col items-center gap-2 max-w-md mx-auto relative overflow-hidden"
+                  className="w-full bg-zinc-950/45 border border-white/10 px-3 md:px-4 rounded-xl md:rounded-2xl shadow-xl flex flex-row items-center justify-between gap-3 max-w-xl mx-auto relative overflow-hidden h-10 xs:h-11 md:h-14 backdrop-blur-md"
                 >
                   <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
                   
-                  <div className="flex items-center gap-3 relative z-10 w-full text-left">
+                  {/* Subtle top indicator bar */}
+                  <div className={`absolute top-0 left-0 right-0 h-[2px] opacity-90 ${
+                    isCorrect 
+                      ? 'bg-gradient-to-r from-green-500 via-emerald-400 to-teal-400' 
+                      : 'bg-gradient-to-r from-red-500 via-orange-400 to-amber-350'
+                  }`} />
+                  
+                  <div className="flex items-center gap-2 md:gap-3 relative z-10 text-left min-w-0 flex-1">
                     {isCorrect ? (
-                      <div className="w-9 h-9 md:w-12 md:h-12 rounded-full bg-green/10 text-green border border-green/30 flex justify-center items-center shadow-lg">
-                        <Check className="w-5 h-5 md:w-7 md:h-7 stroke-[3.5]" />
+                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 flex justify-center items-center shadow-md flex-shrink-0">
+                        <Check className="w-3.5 h-3.5 md:w-4.5 md:h-4.5 stroke-[3]" />
                       </div>
                     ) : (
-                      <div className="w-9 h-9 md:w-12 md:h-12 rounded-full bg-red/10 text-red border border-red/30 flex justify-center items-center shadow-lg">
-                        <X className="w-5 h-5 md:w-7 md:h-7 stroke-[3.5]" />
+                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex justify-center items-center shadow-md flex-shrink-0">
+                        <X className="w-3.5 h-3.5 md:w-4.5 md:h-4.5 stroke-[3]" />
                       </div>
                     )}
-                    <div>
-                      <h4 className={`font-sans font-black text-[10px] md:text-sm tracking-wider uppercase ${isCorrect ? 'text-green text-glow' : 'text-red'}`}>
-                        {isCorrect ? '🏆 TACTICAL MASTERCLASS!' : '💔 BLUNDER OF THE SEASON!'}
+                    <div className="min-w-0 flex-1">
+                      <h4 className={`font-sans font-black text-[9px] md:text-xs tracking-wider uppercase leading-tight truncate ${isCorrect ? 'text-green-400' : 'text-red-400'}`}>
+                        {isCorrect ? 'Correct Pick!' : 'Wrong Answer!'}
                       </h4>
-                      <p className="font-sans text-[9px] md:text-xs text-zinc-300 font-medium">
-                        {isCorrect ? `Live streak extended to ${streak} hits 🔥` : `Decision failure! Streak has been fully reset.`}
+                      <p className="font-sans text-[8px] md:text-[10px] text-zinc-300 font-medium leading-none mt-0.5 truncate">
+                        {isCorrect ? `Streak extended to ${streak} 🔥` : `Streak reset to zero.`}
                       </p>
                     </div>
                   </div>
@@ -1009,10 +1016,10 @@ export default function PlayScreen({
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.2 }}
                       onClick={handleNextRound}
-                      className="w-full bg-gradient-to-r from-amber-500 to-[#E8472A] hover:from-amber-400 hover:to-[#ff5c3e] text-white py-2 md:py-3 px-4 rounded-lg md:rounded-xl font-sans font-black text-[10px] md:text-xs tracking-widest uppercase transition-all shadow-lg active:scale-97 flex items-center justify-center gap-1.5 cursor-pointer mt-0.5 relative z-10"
+                      className="h-7 md:h-10 bg-gradient-to-r from-amber-500 to-[#E8472A] hover:brightness-110 text-white px-2.5 md:px-5 font-sans font-black text-[8px] md:text-[10px] tracking-wider uppercase rounded-lg transition-all shadow-md active:scale-97 flex items-center justify-center gap-1 cursor-pointer relative z-10 whitespace-nowrap flex-shrink-0"
                     >
-                      <span>NEXT CONTESTANT</span>
-                      <Sparkles className="w-3.5 h-3.5 text-white animate-spin" style={{ animationDuration: '6s' }} />
+                      <span>NEXT ROUND</span>
+                      <Sparkles className="w-3 h-3 text-white animate-spin" style={{ animationDuration: '6s' }} />
                     </motion.button>
                   )}
                 </motion.div>
