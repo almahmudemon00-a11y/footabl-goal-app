@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Flame, Trophy, Check, X, RotateCcw, Share2, MessageSquare, AlertCircle, FileText, Sparkles, ArrowUp, ArrowDown } from 'lucide-react';
-import { Character, Comment, User } from '../types.ts';
+import { Character, Comment, User, UserStats } from '../types.ts';
 import { UNIVERSE_COLORS, PRE_SEEDED_COMMENTS } from '../data.ts';
 
 const getCountryFlagEmoji = (countryName: string): string => {
@@ -38,6 +38,59 @@ const getCountryFlagEmoji = (countryName: string): string => {
   if (norm.includes('wales') || norm.includes('bale')) return '🏴󠁧󠁢󠁷󠁬󠁳󠁿';
   return '⚽';
 };
+
+export interface LevelProgressInfo {
+  level: number;
+  correctGuessesInLevel: number;
+  requiredInLevel: number;
+  percentage: number;
+  totalToNext: number;
+  guessesNeeded: number;
+}
+
+export function getLevelProgress(correctGuesses: number): LevelProgressInfo {
+  // Thresholds represent the total correctGuesses required to reach the NEXT level:
+  // Level 1 -> reaches Level 2 at 3
+  // Level 2 -> reaches Level 3 at 10
+  // Level 3 -> reaches Level 4 at 20
+  // Level 4 -> reaches Level 5 at 35
+  const thresholds = [3, 10, 20, 35];
+  
+  let currentVal = 35;
+  let diff = 15;
+  
+  // Fill up to 1000 thresholds dynamically
+  while (thresholds.length < 1000) {
+    diff += 5;
+    currentVal += diff;
+    thresholds.push(currentVal);
+  }
+  
+  let level = 1;
+  for (let i = 0; i < thresholds.length; i++) {
+    if (correctGuesses >= thresholds[i]) {
+      level = i + 2;
+    } else {
+      break;
+    }
+  }
+  
+  const prevThreshold = level === 1 ? 0 : thresholds[level - 2];
+  const nextThreshold = thresholds[level - 1];
+  
+  const correctGuessesInLevel = correctGuesses - prevThreshold;
+  const requiredInLevel = nextThreshold - prevThreshold;
+  const percentage = Math.min(100, Math.max(0, (correctGuessesInLevel / requiredInLevel) * 100));
+  
+  return {
+    level,
+    correctGuessesInLevel,
+    requiredInLevel,
+    percentage,
+    totalToNext: nextThreshold,
+    guessesNeeded: nextThreshold - correctGuesses
+  };
+}
 
 const getPlayerRarity = (val: number, isLight: boolean = false) => {
   if (val >= 600) {
@@ -157,6 +210,7 @@ interface PlayScreenProps {
   comments: Record<string, Comment[]>;
   user: User;
   bestStreak: number;
+  stats: UserStats;
   onNavigateToCommunity: (charId?: string) => void;
   onUpdateStats: (correct: boolean, nextStreak?: number, mode?: 'goals' | 'assists' | 'gAndA') => void;
   onCustomSheetLoad: (url: string) => Promise<{ success: boolean; error?: string }>;
@@ -170,6 +224,7 @@ export default function PlayScreen({
   comments,
   user,
   bestStreak,
+  stats,
   onNavigateToCommunity,
   onUpdateStats,
   onCustomSheetLoad,
@@ -230,6 +285,22 @@ export default function PlayScreen({
   const [showSheetInput, setShowSheetInput] = useState<boolean>(false);
   const [tempSheetUrl, setTempSheetUrl] = useState<string>(sheetUrl);
   const [sheetMessage, setSheetMessage] = useState<{ text: string; error: boolean } | null>(null);
+
+  // Level Up celebrate tracking using stats.correctGuesses
+  const levelProgress = getLevelProgress(stats.correctGuesses || 0);
+  const [showLevelUpAlert, setShowLevelUpAlert] = useState<boolean>(false);
+  const prevLevelRef = useRef<number>(levelProgress.level);
+
+  useEffect(() => {
+    if (levelProgress.level > prevLevelRef.current) {
+      setShowLevelUpAlert(true);
+      const timer = setTimeout(() => {
+        setShowLevelUpAlert(false);
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+    prevLevelRef.current = levelProgress.level;
+  }, [levelProgress.level]);
 
   // Helper metric getter
   const getMetricValue = (char: Character, mode: 'goals' | 'assists' | 'gAndA'): number => {
@@ -520,7 +591,7 @@ export default function PlayScreen({
   }, [sessionPairings]);
 
   return (
-    <div className="relative min-h-[calc(100vh-3.5rem)] pt-[4.2rem] md:pt-20 pb-3 md:pb-5 px-2.5 md:px-8 max-w-6xl mx-auto flex flex-col justify-between select-none bg-transparent dark:bg-gradient-to-br dark:from-[#0c1220] dark:via-[#04060c] dark:to-[#010204] overflow-hidden">
+    <div className="relative min-h-[calc(100vh-3.5rem)] pt-[5.5rem] md:pt-24 pb-3 md:pb-5 px-2.5 md:px-8 max-w-6xl mx-auto flex flex-col justify-between select-none bg-transparent dark:bg-gradient-to-br dark:from-[#0c1220] dark:via-[#04060c] dark:to-[#010204] overflow-hidden">
       
       {/* Ultimate Football Arena Backdrop Effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -556,6 +627,37 @@ export default function PlayScreen({
         )}
       </AnimatePresence>
 
+      {/* Level Up Banner Overlay */}
+      <AnimatePresence>
+        {showLevelUpAlert && (
+          <div className="fixed inset-0 bg-black/40 z-[99] flex items-center justify-center p-4 backdrop-blur-sm pointer-events-none">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0, y: -20 }}
+              className="bg-[#0e0e12]/95 border border-amber-500/30 rounded-2xl p-6 max-w-[280px] w-full text-center relative shadow-[0_0_50px_rgba(245,200,66,0.25)] flex flex-col items-center justify-center overflow-hidden pointer-events-auto"
+            >
+              {/* Ambient golden glow behind */}
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,200,66,0.1)_0%,transparent_70%)]" />
+              
+              <div className="w-12 h-12 rounded-full bg-amber-500/15 text-amber-400 flex items-center justify-center mb-3 border border-amber-500/30 shadow-[inset_0_1px_4px_rgba(245,200,66,0.2)] animate-bounce relative z-10">
+                <Sparkles className="w-6 h-6 text-amber-400 fill-amber-400/20" />
+              </div>
+
+              <h2 className="font-display text-lg font-black text-amber-400 tracking-wider uppercase animate-pulse relative z-10">
+                LEVEL UP!
+              </h2>
+              <p className="font-sans text-[11px] text-zinc-350 mt-1.5 leading-relaxed font-semibold relative z-10">
+                You've reached Esports Level <span className="text-amber-300 font-extrabold">{levelProgress.level}</span>!
+              </p>
+              <p className="font-mono text-[8px] text-zinc-500 uppercase tracking-widest mt-2 relative z-10">
+                Keep picking correct values to rank up!
+              </p>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Dynamic Header: Streak Tracker & Level Meter */}
       <div className="w-full max-w-4xl mx-auto flex flex-row items-center justify-between gap-3 px-3 mb-1.5 md:mb-4 relative z-30 select-none">
         
@@ -578,19 +680,31 @@ export default function PlayScreen({
         </div>
 
         {/* Level bar progress to showcase esports level indicator */}
-        <div className="flex-1 max-w-[120px] xs:max-w-[170px] md:max-w-[220px] flex flex-col items-end text-right">
-          <div className="flex justify-between w-full text-[7.5px] md:text-[9px] font-black text-zinc-500 dark:text-zinc-400 mb-0.5 md:mb-1 tracking-wider uppercase">
-            <span>LEVEL {Math.max(1, Math.floor(streak / 3) + 1)}</span>
-            <span>{(streak % 3)} / 3</span>
+        <div className="flex flex-col items-end text-right min-w-[140px] xs:min-w-[190px] md:min-w-[250px] max-w-[260px]">
+          <div className="flex justify-between w-full text-[7.5px] md:text-[9px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1 tracking-wider uppercase">
+            <span className="font-sans font-extrabold text-zinc-150 text-amber-400 animate-pulse">LVL {levelProgress.level} ACTIVE</span>
+            <span className="font-mono text-[7px] md:text-[8.5px] text-zinc-400 tracking-tight">{levelProgress.guessesNeeded} TO LVL {levelProgress.level + 1}</span>
           </div>
-          <div className="w-full bg-zinc-300/40 dark:bg-zinc-950/80 rounded-full h-1 md:h-1.5 overflow-hidden border border-zinc-200 dark:border-white/5 p-[1px]">
+          <div className="w-full bg-zinc-300/40 dark:bg-zinc-950/85 rounded-full h-4.5 md:h-[22px] overflow-hidden border border-zinc-250 dark:border-white/10 p-[2px] relative flex items-center shadow-inner">
             <motion.div 
               className="bg-gradient-to-r from-amber-500 via-[#FF5D42] to-[#E8472A] h-full rounded-full shadow-[0_0_12px_rgba(232,71,42,0.5)]"
               initial={{ width: 0 }}
-              animate={{ width: `${((streak % 3) / 3) * 100}%` }}
+              animate={{ width: `${levelProgress.percentage}%` }}
               transition={{ duration: 0.4 }}
             />
+            
+            {/* Absolute overlay of level numbers directly filling inside the bar */}
+            <div className="absolute inset-0 flex justify-between items-center px-2.5 font-mono text-[7.5px] md:text-[9.5px] font-black text-white mix-blend-difference select-none pointer-events-none tracking-tight">
+              <span>{stats.correctGuesses - levelProgress.correctGuessesInLevel}</span>
+              <span className="text-amber-300/90 font-sans tracking-wide">
+                {stats.correctGuesses} / {levelProgress.totalToNext} CORRECT
+              </span>
+              <span>{levelProgress.totalToNext}</span>
+            </div>
           </div>
+          <span className="text-[6px] md:text-[7.5px] font-mono mt-1 tracking-wider text-zinc-500 block uppercase">
+            ({levelProgress.correctGuessesInLevel}/{levelProgress.requiredInLevel} progress to level {levelProgress.level + 1})
+          </span>
         </div>
 
       </div>

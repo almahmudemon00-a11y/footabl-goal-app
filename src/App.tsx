@@ -1114,28 +1114,38 @@ export default function App() {
       </header>
 
       {/* MOBILE BOTTOM NAVIGATION TRACK BAR (Visible on < md) */}
-      <nav className="fixed md:hidden bottom-0 left-0 right-0 h-16 bg-card border-t border-primary-border/60 backdrop-blur-md px-4 flex items-center justify-around z-40">
+      <nav className="fixed md:hidden bottom-0 left-0 right-0 h-16 bg-zinc-950/95 border-t border-white/10 backdrop-blur-md px-6 flex items-center justify-around z-40 shadow-[0_-8px_30px_rgb(0,0,0,0.5)]">
         <button
           onClick={() => {
             setActiveTab('play');
             setCommunityExpandTargetCharId(undefined);
           }}
-          className={`flex flex-col items-center gap-1 px-3 py-1 text-zinc-500 hover:text-primary transition-all ${
-            activeTab === 'play' ? 'text-[#E8472A] font-bold' : ''
+          className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-250 relative ${
+            activeTab === 'play' 
+              ? 'text-[#E8472A] bg-[#E8472A]/10 font-bold scale-105 shadow-[inset_0_1px_2px_rgba(232,71,42,0.1)]' 
+              : 'text-zinc-450 hover:text-zinc-200'
           }`}
         >
+          {activeTab === 'play' && (
+            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[3px] bg-[#E8472A] rounded-b-full shadow-[0_1px_10px_rgba(232,71,42,0.8)]" />
+          )}
           <Compass className="w-5 h-5" />
-          <span className="text-[10px] font-sans">Play</span>
+          <span className="text-[10px] font-sans tracking-wide">Play</span>
         </button>
 
         <button
           onClick={() => setActiveTab('community')}
-          className={`flex flex-col items-center gap-1 px-3 py-1 text-zinc-500 hover:text-primary transition-all ${
-            activeTab === 'community' ? 'text-[#E8472A] font-bold' : ''
+          className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-250 relative ${
+            activeTab === 'community' 
+              ? 'text-[#E8472A] bg-[#E8472A]/10 font-bold scale-105 shadow-[inset_0_1px_2px_rgba(232,71,42,0.1)]' 
+              : 'text-zinc-450 hover:text-zinc-200'
           }`}
         >
+          {activeTab === 'community' && (
+            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[3px] bg-[#E8472A] rounded-b-full shadow-[0_1px_10px_rgba(232,71,42,0.8)]" />
+          )}
           <MessageSquare className="w-5 h-5" />
-          <span className="text-[10px] font-sans">Community</span>
+          <span className="text-[10px] font-sans tracking-wide">Community</span>
         </button>
 
         <button
@@ -1143,15 +1153,18 @@ export default function App() {
             setActiveTab('profile');
             setCommunityExpandTargetCharId(undefined);
           }}
-          className={`flex flex-col items-center gap-1 px-3 py-1 text-zinc-500 hover:text-primary transition-all ${
-            activeTab === 'profile' ? 'text-[#E8472A] font-bold' : ''
+          className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-250 relative ${
+            activeTab === 'profile' 
+              ? 'text-[#E8472A] bg-[#E8472A]/10 font-bold scale-105 shadow-[inset_0_1px_2px_rgba(232,71,42,0.1)]' 
+              : 'text-zinc-450 hover:text-zinc-200'
           }`}
         >
+          {activeTab === 'profile' && (
+            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[3px] bg-[#E8472A] rounded-b-full shadow-[0_1px_10px_rgba(232,71,42,0.8)]" />
+          )}
           <User className="w-5 h-5" />
-          <span className="text-[10px] font-sans">Profile</span>
+          <span className="text-[10px] font-sans tracking-wide">Profile</span>
         </button>
-
-
       </nav>
 
       {/* RENDER CURRENT ACTIVE VIEWPORT */}
@@ -1162,6 +1175,7 @@ export default function App() {
             comments={comments}
             user={user}
             bestStreak={stats.bestStreak}
+            stats={stats}
             onNavigateToCommunity={handleNavigateToCommunity}
             onUpdateStats={handleUpdateStats}
             onCustomSheetLoad={fetchGoogleSheetData}

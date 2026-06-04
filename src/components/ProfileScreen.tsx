@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, Sparkles, LogIn, LogOut, Edit2, MessageSquare, Flame, Search, ArrowLeft } from 'lucide-react';
 import { User, UserStats, Comment } from '../types.ts';
 import { PRE_SEEDED_COMMENTS } from '../data.ts';
+import { getLevelProgress } from './PlayScreen.tsx';
 
 interface ProfileScreenProps {
   user: User;
@@ -211,6 +212,11 @@ export default function ProfileScreen({
     if (activeStats.totalGuesses === 0) return 0;
     return Math.round((activeStats.correctGuesses / activeStats.totalGuesses) * 100);
   }, [activeStats]);
+
+  // Level Progression calculate helper
+  const profileLevelProgress = useMemo(() => {
+    return getLevelProgress(activeStats.correctGuesses || 0);
+  }, [activeStats.correctGuesses]);
 
   return (
     <div className="relative min-h-screen pt-24 pb-12 px-4 md:px-8 max-w-4xl mx-auto flex flex-col justify-between">
@@ -432,7 +438,59 @@ export default function ProfileScreen({
 
           {/* Sub TAB 1 — STATISTICS */}
           {activeSubTab === 'stats' && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+            <div className="flex flex-col gap-4 mt-6">
+              {/* Esports Level Progression Master Card */}
+              <div className="bg-zinc-950/40 p-5 md:p-6 rounded-2xl border border-primary-border text-left relative overflow-hidden shadow-md">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-amber-500/5 to-transparent blur-2xl pointer-events-none" />
+                
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 z-10 relative">
+                  <div>
+                    <span className="font-mono text-[9px] text-[#E8472A] uppercase tracking-widest font-bold block">Esports Level Status</span>
+                    <h3 className="font-sans text-xl md:text-2xl font-black text-amber-400 mt-1 flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-amber-400 fill-amber-400/20" />
+                      <span>LEVEL {profileLevelProgress.level} CHAMPION</span>
+                    </h3>
+                  </div>
+                  <div className="text-right sm:text-right">
+                    <span className="font-mono text-[10px] text-zinc-400 block">
+                      {profileLevelProgress.guessesNeeded} more correct choices to reach <span className="text-amber-400 font-bold">Level {profileLevelProgress.level + 1}</span>
+                    </span>
+                    <span className="font-sans text-[11px] text-zinc-500 block mt-0.5">
+                      Completed {profileLevelProgress.correctGuessesInLevel} of {profileLevelProgress.requiredInLevel} needed this level
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress bar container */}
+                <div className="mt-4 relative">
+                  <div className="w-full bg-zinc-950 border border-white/10 rounded-full h-5 md:h-6 p-[2px] overflow-hidden relative flex items-center shadow-inner">
+                    <motion.div 
+                      className="bg-gradient-to-r from-amber-500 via-[#FF5D42] to-[#E8472A] h-full rounded-full shadow-[0_0_12px_rgba(232,71,42,0.4)]"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${profileLevelProgress.percentage}%` }}
+                      transition={{ duration: 0.5 }}
+                    />
+                    
+                    {/* Absolute overlay of level metrics directly filling inside the bar */}
+                    <div className="absolute inset-0 flex justify-between items-center px-4 font-mono text-[9px] md:text-[11px] font-black text-white mix-blend-difference select-none pointer-events-none tracking-tight">
+                      <span>LVL {profileLevelProgress.level} ({activeStats.correctGuesses - profileLevelProgress.correctGuessesInLevel})</span>
+                      <span className="text-amber-300 font-sans tracking-wide">
+                        {activeStats.correctGuesses} / {profileLevelProgress.totalToNext} CORRECT
+                      </span>
+                      <span>LVL {profileLevelProgress.level + 1} ({profileLevelProgress.totalToNext})</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5 text-[9px] text-zinc-400 font-mono">
+                  <span>TOTAL CORRECT CHECKS: {activeStats.correctGuesses}</span>
+                  <span className="text-zinc-600">•</span>
+                  <span>PREDICTION SUCCESS: {activeStats.totalGuesses ? Math.round((activeStats.correctGuesses / activeStats.totalGuesses) * 100) : 0}%</span>
+                </div>
+              </div>
+
+              {/* Sub grid of standard metrics */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               
               <div className="bg-secondary-surface/40 p-4 rounded-xl border border-primary-border text-left">
                 <span className="font-sans text-[10px] text-secondary uppercase block tracking-wider">Best Guess Streak</span>
@@ -479,7 +537,8 @@ export default function ProfileScreen({
               </div>
 
             </div>
-          )}
+          </div>
+        )}
 
           {/* Sub TAB 2 — USER COMMENTS */}
           {activeSubTab === 'comments' && (
