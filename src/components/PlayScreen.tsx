@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Flame, Trophy, Check, X, RotateCcw, Share2, MessageSquare, AlertCircle, FileText, Sparkles, ArrowUp, ArrowDown } from 'lucide-react';
+import { Flame, Trophy, Check, X, RotateCcw, Share2, MessageSquare, AlertCircle, FileText, Sparkles, ArrowUp, ArrowDown, Shield } from 'lucide-react';
 import { Character, Comment, User, UserStats } from '../types.ts';
 import { UNIVERSE_COLORS, PRE_SEEDED_COMMENTS } from '../data.ts';
 
@@ -679,32 +679,50 @@ export default function PlayScreen({
           </div>
         </div>
 
-        {/* Level bar progress to showcase esports level indicator */}
-        <div className="flex flex-col items-end text-right min-w-[140px] xs:min-w-[190px] md:min-w-[250px] max-w-[260px]">
-          <div className="flex justify-between w-full text-[7.5px] md:text-[9px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1 tracking-wider uppercase">
-            <span className="font-sans font-extrabold text-zinc-150 text-amber-400 animate-pulse">LVL {levelProgress.level} ACTIVE</span>
-            <span className="font-mono text-[7px] md:text-[8.5px] text-zinc-400 tracking-tight">{levelProgress.guessesNeeded} TO LVL {levelProgress.level + 1}</span>
-          </div>
-          <div className="w-full bg-zinc-300/40 dark:bg-zinc-950/85 rounded-full h-4.5 md:h-[22px] overflow-hidden border border-zinc-250 dark:border-white/10 p-[2px] relative flex items-center shadow-inner">
-            <motion.div 
-              className="bg-gradient-to-r from-amber-500 via-[#FF5D42] to-[#E8472A] h-full rounded-full shadow-[0_0_12px_rgba(232,71,42,0.5)]"
-              initial={{ width: 0 }}
-              animate={{ width: `${levelProgress.percentage}%` }}
-              transition={{ duration: 0.4 }}
-            />
-            
-            {/* Absolute overlay of level numbers directly filling inside the bar */}
-            <div className="absolute inset-0 flex justify-between items-center px-2.5 font-mono text-[7.5px] md:text-[9.5px] font-black text-white mix-blend-difference select-none pointer-events-none tracking-tight">
-              <span>{stats.correctGuesses - levelProgress.correctGuessesInLevel}</span>
-              <span className="text-amber-300/90 font-sans tracking-wide">
-                {stats.correctGuesses} / {levelProgress.totalToNext} CORRECT
-              </span>
-              <span>{levelProgress.totalToNext}</span>
+        {/* Level progression showcase - premium esports ranked UI */}
+        <div id="esports_rank_progress" className="flex flex-row items-center gap-2 md:gap-3 p-1.5 md:p-2 bg-zinc-950/40 backdrop-blur-md border border-white/[0.04] rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.6)] min-w-[155px] xs:min-w-[195px] md:min-w-[260px] max-w-[280px]">
+          {/* Rank Badge Shield */}
+          <div className="relative flex items-center justify-center shrink-0">
+            {/* Radiant golden glow pulsing behind the badge */}
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-amber-500 via-[#FF5D42] to-[#E8472A] opacity-[0.14] blur-md animate-pulse" />
+            <div className="relative bg-black/60 border border-amber-500/25 rounded-xl p-1.5 md:p-2 flex flex-col items-center justify-center min-w-[42px] md:min-w-[50px] aspect-square shadow-inner">
+              <Shield className="w-3.5 md:w-4.5 h-3.5 md:h-4.5 text-amber-400 fill-amber-400/5 animate-pulse" />
+              <span className="font-display font-black text-[9px] md:text-[11px] text-amber-400 leading-none mt-0.5">LVL {levelProgress.level}</span>
             </div>
           </div>
-          <span className="text-[6px] md:text-[7.5px] font-mono mt-1 tracking-wider text-zinc-500 block uppercase">
-            ({levelProgress.correctGuessesInLevel}/{levelProgress.requiredInLevel} progress to level {levelProgress.level + 1})
-          </span>
+
+          {/* Progress Track, Labels, and Remaining XP */}
+          <div className="flex flex-col flex-1 min-w-0 pr-1 select-none">
+            {/* Top Row: Title & current progression status */}
+            <div className="flex justify-between items-baseline mb-1 gap-1">
+              <span className="text-[7.5px] md:text-[8.5px] font-sans font-black text-zinc-300 uppercase tracking-widest truncate">
+                REGIONAL RANK
+              </span>
+              <span className="text-[7px] md:text-[8px] font-mono text-zinc-400 font-bold">
+                {stats.correctGuesses} / {levelProgress.totalToNext} PTS
+              </span>
+            </div>
+            
+            {/* Thin, elegant, highly polished progress track */}
+            <div className="w-full bg-zinc-950 rounded-full h-1 md:h-1.5 overflow-hidden border border-white/5 relative p-[0.25px]">
+              <motion.div 
+                className="bg-gradient-to-r from-amber-500 via-[#FF4A2A] to-[#E13619] h-full rounded-full shadow-[0_0_10px_rgba(255,74,42,0.5)]"
+                initial={{ width: 0 }}
+                animate={{ width: `${levelProgress.percentage}%` }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              />
+            </div>
+
+            {/* Bottom Row: Level guide and countdown XP */}
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-[6.5px] md:text-[7px] font-mono text-zinc-500 font-semibold uppercase tracking-widest">
+                LVL {levelProgress.level + 1}
+              </span>
+              <span className="text-[6.5px] md:text-[7.5px] font-mono font-black text-amber-400 tracking-wide uppercase">
+                -{levelProgress.guessesNeeded} XP TO GO
+              </span>
+            </div>
+          </div>
         </div>
 
       </div>

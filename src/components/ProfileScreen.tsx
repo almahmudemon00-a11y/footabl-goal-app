@@ -5,7 +5,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShieldAlert, Sparkles, LogIn, LogOut, Edit2, MessageSquare, Flame, Search, ArrowLeft } from 'lucide-react';
+import { ShieldAlert, Sparkles, LogIn, LogOut, Edit2, MessageSquare, Flame, Search, ArrowLeft, Shield } from 'lucide-react';
 import { User, UserStats, Comment } from '../types.ts';
 import { PRE_SEEDED_COMMENTS } from '../data.ts';
 import { getLevelProgress } from './PlayScreen.tsx';
@@ -440,52 +440,59 @@ export default function ProfileScreen({
           {activeSubTab === 'stats' && (
             <div className="flex flex-col gap-4 mt-6">
               {/* Esports Level Progression Master Card */}
-              <div className="bg-zinc-950/40 p-5 md:p-6 rounded-2xl border border-primary-border text-left relative overflow-hidden shadow-md">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-amber-500/5 to-transparent blur-2xl pointer-events-none" />
+              <div id="profile_esports_rank_card" className="bg-gradient-to-br from-zinc-950 via-[#0e0e12] to-zinc-950/90 p-5 md:p-6 rounded-2xl border border-[#FF5D42]/15 text-left relative overflow-hidden shadow-2xl">
+                {/* Visual game-style grid overlay background and side gradients */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.06),transparent_60%)]" />
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:16px_16px] [mask-image:radial-gradient(ellipse_at_center,white,transparent_80%)] pointer-events-none opacity-30" />
                 
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 z-10 relative">
-                  <div>
-                    <span className="font-mono text-[9px] text-[#E8472A] uppercase tracking-widest font-bold block">Esports Level Status</span>
-                    <h3 className="font-sans text-xl md:text-2xl font-black text-amber-400 mt-1 flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-amber-400 fill-amber-400/20" />
-                      <span>LEVEL {profileLevelProgress.level} CHAMPION</span>
-                    </h3>
-                  </div>
-                  <div className="text-right sm:text-right">
-                    <span className="font-mono text-[10px] text-zinc-400 block">
-                      {profileLevelProgress.guessesNeeded} more correct choices to reach <span className="text-amber-400 font-bold">Level {profileLevelProgress.level + 1}</span>
-                    </span>
-                    <span className="font-sans text-[11px] text-zinc-500 block mt-0.5">
-                      Completed {profileLevelProgress.correctGuessesInLevel} of {profileLevelProgress.requiredInLevel} needed this level
-                    </span>
-                  </div>
-                </div>
-
-                {/* Progress bar container */}
-                <div className="mt-4 relative">
-                  <div className="w-full bg-zinc-950 border border-white/10 rounded-full h-5 md:h-6 p-[2px] overflow-hidden relative flex items-center shadow-inner">
-                    <motion.div 
-                      className="bg-gradient-to-r from-amber-500 via-[#FF5D42] to-[#E8472A] h-full rounded-full shadow-[0_0_12px_rgba(232,71,42,0.4)]"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${profileLevelProgress.percentage}%` }}
-                      transition={{ duration: 0.5 }}
-                    />
-                    
-                    {/* Absolute overlay of level metrics directly filling inside the bar */}
-                    <div className="absolute inset-0 flex justify-between items-center px-4 font-mono text-[9px] md:text-[11px] font-black text-white mix-blend-difference select-none pointer-events-none tracking-tight">
-                      <span>LVL {profileLevelProgress.level} ({activeStats.correctGuesses - profileLevelProgress.correctGuessesInLevel})</span>
-                      <span className="text-amber-300 font-sans tracking-wide">
-                        {activeStats.correctGuesses} / {profileLevelProgress.totalToNext} CORRECT
-                      </span>
-                      <span>LVL {profileLevelProgress.level + 1} ({profileLevelProgress.totalToNext})</span>
+                  <div className="flex items-center gap-3.5">
+                    {/* Level badge shield */}
+                    <div className="relative shrink-0 flex items-center justify-center">
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-500 via-[#FF5D42] to-[#E8472A] opacity-20 blur-lg animate-pulse" />
+                      <div className="relative bg-zinc-950 border border-amber-500/30 rounded-xl w-12 h-12 md:w-14 md:h-14 flex flex-col items-center justify-center shadow-lg">
+                        <Shield className="w-5 h-5 text-amber-400 fill-amber-400/5 animate-pulse" />
+                        <span className="font-display font-black text-xs md:text-sm text-amber-400 leading-none mt-0.5">L{profileLevelProgress.level}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="font-mono text-[9px] text-[#FF5D42] uppercase tracking-widest font-black block">Competitive Standing</span>
+                      <h3 className="font-display text-lg md:text-xl font-black text-zinc-100 uppercase tracking-tight mt-0.5 flex items-center gap-1.5">
+                        <span>LEVEL {profileLevelProgress.level} CHAMPION</span>
+                        <Sparkles className="w-4 h-4 text-amber-400 fill-amber-400/10 animate-pulse shrink-0" />
+                      </h3>
                     </div>
                   </div>
+                  <div className="text-left sm:text-right">
+                    <span className="font-mono text-[9px] md:text-[10px] text-zinc-400 uppercase tracking-wider block">
+                      Next Level: <span className="text-amber-400 font-extrabold font-sans">LEVEL {profileLevelProgress.level + 1}</span>
+                    </span>
+                    <span className="font-mono text-[10px] text-[#FF5D42] font-black mt-1 block">
+                      {profileLevelProgress.guessesNeeded} XP TO LEVEL UP
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5 text-[9px] text-zinc-400 font-mono">
-                  <span>TOTAL CORRECT CHECKS: {activeStats.correctGuesses}</span>
-                  <span className="text-zinc-600">•</span>
-                  <span>PREDICTION SUCCESS: {activeStats.totalGuesses ? Math.round((activeStats.correctGuesses / activeStats.totalGuesses) * 100) : 0}%</span>
+                {/* Elegant, thin esports progress track */}
+                <div className="mt-5 relative z-10">
+                  <div className="flex justify-between text-[8px] md:text-[9px] text-zinc-500 font-mono mb-1.5 uppercase tracking-wider">
+                    <span>PROGRESSION POINT</span>
+                    <span>{profileLevelProgress.correctGuessesInLevel} / {profileLevelProgress.requiredInLevel} XP ({Math.round(profileLevelProgress.percentage)}%)</span>
+                  </div>
+                  <div className="w-full bg-zinc-950/80 border border-white/5 rounded-full h-2 p-[2px] overflow-hidden relative flex items-center shadow-inner">
+                    <motion.div 
+                      className="bg-gradient-to-r from-amber-500 via-[#FF4A2A] to-[#E13619] h-full rounded-full shadow-[0_0_12px_rgba(255,74,42,0.6)]"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${profileLevelProgress.percentage}%` }}
+                      transition={{ duration: 0.7, ease: "easeOut" }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center mt-4 pt-3 border-t border-white/5 text-[9px] text-zinc-500 font-mono z-10 relative">
+                  <span>OVERALL CORRECT PREDICTIONS: {activeStats.correctGuesses}</span>
+                  <span className="text-zinc-700">•</span>
+                  <span>ACCURACY: {activeStats.totalGuesses ? Math.round((activeStats.correctGuesses / activeStats.totalGuesses) * 100) : 0}%</span>
                 </div>
               </div>
 
