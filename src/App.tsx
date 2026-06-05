@@ -836,10 +836,20 @@ export default function App() {
     } catch (error: any) {
       console.error('Google popup sign in failed:', error);
       const msg = error?.message || String(error);
+      const errCode = error?.code || '';
+      
       const isPopupError = msg.includes('popup-closed-by-user') || 
                            msg.includes('popup-blocked') || 
                            msg.includes('cancelled-by-user') ||
                            msg.includes('cancelled-popup-request');
+
+      if (errCode === 'auth/unauthorized-domain' || msg.includes('unauthorized-domain')) {
+        return {
+          success: false,
+          error: 'Domain goalspire.top is not authorized in your Firebase project! Please open your Firebase Console, click "Authentication" on the left menu, select the "Settings" tab, find "Authorized Domains", and add "goalspire.top" and "www.goalspire.top" to allow users to sign in.'
+        };
+      }
+      
       return {
         success: false,
         error: isPopupError
