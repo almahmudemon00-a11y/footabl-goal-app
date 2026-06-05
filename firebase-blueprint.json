@@ -63,6 +63,7 @@
       "type": "object",
       "properties": {
         "custom_sheet_url": { "type": "string" },
+        "feedback_email": { "type": "string" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["custom_sheet_url"]

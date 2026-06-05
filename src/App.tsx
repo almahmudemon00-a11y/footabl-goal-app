@@ -51,6 +51,11 @@ export default function App() {
   });
   const [isSheetLoading, setIsSheetLoading] = useState<boolean>(false);
 
+  // Dynamic user-custom feedback email address
+  const [feedbackEmail, setFeedbackEmail] = useState<string>(() => {
+    return localStorage.getItem('feedback_email') || 'almagdjsg@gmail.com';
+  });
+
   // Authenticated user store
   const [user, setUser] = useState<UserType>(() => {
     // Check local guest/username records
@@ -467,6 +472,10 @@ export default function App() {
         } else {
           localStorage.removeItem('custom_sheet_url');
         }
+
+        const email = data.feedback_email || 'almagdjsg@gmail.com';
+        setFeedbackEmail(email);
+        localStorage.setItem('feedback_email', email);
       }
     }, (error) => {
       console.error('Settings subscription errored:', error);
@@ -487,6 +496,20 @@ export default function App() {
       setCharacters(DEFAULT_CHARACTERS);
     }
   }, [sheetUrl]);
+
+  const handleUpdateFeedbackEmail = async (newEmail: string) => {
+    setFeedbackEmail(newEmail);
+    localStorage.setItem('feedback_email', newEmail);
+    try {
+      await setDoc(doc(db, 'settings', 'global_config'), {
+        custom_sheet_url: sheetUrl,
+        feedback_email: newEmail,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'settings/global_config');
+    }
+  };
 
   // Synchronous and Secure stats updates synced with Firestore backwall
   const handleUpdateStats = async (correct: boolean, nextStreak?: number, playedMode?: 'goals' | 'assists' | 'gAndA') => {
@@ -582,10 +605,12 @@ export default function App() {
         localStorage.removeItem('custom_sheet_url');
         try {
           await setDoc(doc(db, 'settings', 'global_config'), {
-            custom_sheet_url: ''
+            custom_sheet_url: '',
+            feedback_email: feedbackEmail,
+            updatedAt: serverTimestamp()
           });
         } catch (error) {
-          console.error('Failed to clear custom sheet URL in Firestore:', error);
+          handleFirestoreError(error, OperationType.WRITE, 'settings/global_config');
         }
         setIsSheetLoading(false);
         return { success: true };
@@ -773,10 +798,12 @@ export default function App() {
         localStorage.setItem('custom_sheet_url', parsedUrl);
         try {
           await setDoc(doc(db, 'settings', 'global_config'), {
-            custom_sheet_url: parsedUrl
+            custom_sheet_url: parsedUrl,
+            feedback_email: feedbackEmail,
+            updatedAt: serverTimestamp()
           });
         } catch (error) {
-          console.error('Failed to update custom sheet URL in Firestore:', error);
+          handleFirestoreError(error, OperationType.WRITE, 'settings/global_config');
         }
         setIsSheetLoading(false);
         return { success: true };
@@ -1213,6 +1240,9 @@ export default function App() {
           <SettingsScreen
             theme={theme}
             onThemeToggle={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            user={user}
+            feedbackEmail={feedbackEmail}
+            onUpdateFeedbackEmail={handleUpdateFeedbackEmail}
           />
         )}
       </main>

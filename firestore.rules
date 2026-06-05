@@ -38,14 +38,16 @@ service cloud.firestore {
     // -------------------------------------------------------------
     match /settings/{settingsId} {
       allow get, list: if true;
-      allow create, update: if isValidId(settingsId) && isValidSettings(incoming());
+      allow create, update: if isSignedIn() && isAdmin() && isValidId(settingsId) && isValidSettings(incoming());
     }
 
     function isValidSettings(data) {
       return data.keys().hasAll(['custom_sheet_url'])
-        && data.keys().size() <= 2
+        && data.keys().size() <= 4
         && data.custom_sheet_url is string
-        && data.custom_sheet_url.size() <= 1000;
+        && data.custom_sheet_url.size() <= 1000
+        && (!('feedback_email' in data) || (data.feedback_email is string && data.feedback_email.size() <= 254))
+        && (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
     // -------------------------------------------------------------
