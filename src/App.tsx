@@ -1,6 +1,8 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
+ * 
+ * GoalSpire Game Platform - Deploy Trigger Comment
  */
 
 import React, { useState, useEffect, useLayoutEffect } from 'react';
