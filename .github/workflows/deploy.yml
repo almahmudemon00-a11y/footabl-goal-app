@@ -33,7 +33,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
-          # Uses FTP_DIR secret if provided, otherwise defaults to standard public_html/
-          server-dir: ${{ secrets.FTP_DIR || 'public_html/' }}
+          # Uses FTP_DIR secret if provided, otherwise defaults to goalspire.top/ based on cPanel layout
+          server-dir: ${{ secrets.FTP_DIR || 'goalspire.top/' }}
           # Loose security allows connection over standard FTP if FTPS is misconfigured or has invalid/self-signed SSL
           security: loose
