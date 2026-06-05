@@ -1049,7 +1049,7 @@ export default function App() {
           
           <div className="flex flex-col text-left leading-none">
             <span className="font-display text-2xl font-black tracking-tighter text-primary select-none">
-              Statball
+              GoalSpire
             </span>
             <span className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-1">
               Play. Debate. Rank up.
