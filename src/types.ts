@@ -16,17 +16,6 @@ export interface Character {
   imageUrl: string;
 }
 
-export interface ReplyComment {
-  id: string;
-  userId: string;
-  username: string;
-  text: string;
-  timestamp: number;
-  upvotes: number;
-  downvotes?: number;
-  replies?: ReplyComment[];
-}
-
 export interface Thread {
   threadId: string;
   title: string;
@@ -59,14 +48,23 @@ export interface Report {
 }
 
 export interface Comment {
-  id: string;
-  userId: string;
+  id: string; // Document ID (usually matches commentId)
+  commentId: string;
+  postId: string;
+  characterId: string; // maps to postId
+  userId: string; // matches authorId
+  authorId: string;
   username: string;
-  text: string;
+  text: string; // maps to content
+  content: string;
+  replyToUsername?: string; // used for simple flat replies
+  timestamp: number; // matches createdAt
+  createdAt: number;
   upvotes: number;
+  likedBy?: string[];
   downvotes?: number;
-  timestamp: number;
-  replies: ReplyComment[];
+  dislikedBy?: string[];
+  reported?: boolean;
 }
 
 export interface UserStats {

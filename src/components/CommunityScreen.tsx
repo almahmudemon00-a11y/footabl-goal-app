@@ -11,7 +11,7 @@ import {
   Trash2, Edit, ChevronRight, X, Heart, ShieldAlert, BadgeInfo, Play, ThumbsUp, ThumbsDown,
   ChevronDown, ChevronUp, Check
 } from 'lucide-react';
-import { Thread, Comment, User, ReplyComment, Report } from '../types.ts';
+import { Thread, Comment, User, Report } from '../types.ts';
 
 import { 
   collection, 
@@ -106,7 +106,9 @@ export default function CommunityScreen({
     }
   });
   const [keyboardSelectedIndex, setKeyboardSelectedIndex] = useState<number>(-1);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState<boolean>(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Filtered categories lists for internal drop search
   const filteredCategoriesList = useMemo(() => {
@@ -718,13 +720,9 @@ export default function CommunityScreen({
     }
   };
 
-  // Comments & Nested Replies Logic
+  // Comments Logic
   const handleAddRootComment = async (e: React.FormEvent, postId: string) => {
     e.preventDefault();
-    if (isGuest) {
-      triggerNotification("Guests cannot comment.", true);
-      return;
-    }
     if (isBanned) {
       triggerNotification("Your account is currently banned.", true);
       return;
@@ -732,20 +730,28 @@ export default function CommunityScreen({
     if (!newCommentText.trim()) return;
 
     const commentId = 'com_' + Date.now();
+    const trimmedText = newCommentText.trim();
+    
+    // Check if the comment text begins with @username and parse out replyToUsername
+    let replyToUsername: string | undefined = undefined;
+    const match = trimmedText.match(/^@([a-zA-Z0-9_\-]+)/);
+    if (match) {
+      replyToUsername = match[1];
+    }
+
     const commentRecord = {
       commentId,
-      characterId: postId, // maps to postId in our schema
+      characterId: postId,
       userId: myUid,
       username: user.username || 'User_' + myUid.slice(0, 4),
-      text: newCommentText.trim(),
-      upvotes: 0,
+      text: trimmedText,
+      replyToUsername: replyToUsername || null,
       timestamp: Date.now(),
-      replies: [], // compatibility structure
-      parentId: null, // Root level!
-      replyToUser: null,
-      likesCount: 0,
+      upvotes: 0,
+      downvotes: 0,
       likedBy: [],
-      dislikedBy: []
+      dislikedBy: [],
+      reported: false
     };
 
     try {
@@ -768,63 +774,8 @@ export default function CommunityScreen({
     }
   };
 
-  // Add Nested Reply Comment (Child replies)
-  const handleAddNestedReply = async (e: React.FormEvent, parentId: string, replyToUsername: string, postId: string) => {
-    e.preventDefault();
-    if (isGuest) {
-      triggerNotification("Guests cannot reply.", true);
-      return;
-    }
-    if (isBanned) {
-      triggerNotification("Your account is currently banned.", true);
-      return;
-    }
-    if (!replyText.trim()) return;
-
-    const replyId = 'rep_nested_' + Date.now();
-    const replyRecord = {
-      commentId: replyId,
-      characterId: postId,
-      userId: myUid,
-      username: user.username || 'User_' + myUid.slice(0, 4),
-      text: replyText.trim(),
-      upvotes: 0,
-      timestamp: Date.now(),
-      replies: [],
-      parentId: parentId, // child replies point to hierarchical parent
-      replyToUser: replyToUsername,
-      likesCount: 0,
-      likedBy: [],
-      dislikedBy: []
-    };
-
-    try {
-      await setDoc(doc(db, 'comments', replyId), replyRecord);
-
-      // Increment commentsCount recursively
-      const postRef = doc(db, 'threads', postId);
-      const matchedPost = posts.find(p => p.threadId === postId);
-      if (matchedPost) {
-        await updateDoc(postRef, {
-          commentsCount: (matchedPost.commentsCount || 0) + 1
-        });
-      }
-
-      setReplyingToCommentId(null);
-      setReplyText('');
-      triggerNotification("Reply posted!");
-    } catch (err) {
-      console.error(err);
-      triggerNotification("Failed to submit reply.", true);
-    }
-  };
-
-  // Like a comment/reply
+  // Like a comment
   const handleLikeComment = async (commentId: string) => {
-    if (isGuest) {
-      triggerNotification("Guests cannot upvote.", true);
-      return;
-    }
     if (isBanned) {
       triggerNotification("Your account is currently banned.", true);
       return;
@@ -835,6 +786,8 @@ export default function CommunityScreen({
 
     let likedBy = commentDoc.likedBy || [];
     let upvotesCount = commentDoc.upvotes || 0;
+    let dislikedBy = commentDoc.dislikedBy || [];
+    let downvotesCount = commentDoc.downvotes || 0;
 
     const isLiked = likedBy.includes(myUid);
     if (isLiked) {
@@ -843,13 +796,60 @@ export default function CommunityScreen({
     } else {
       likedBy.push(myUid);
       upvotesCount += 1;
+      // Remove dislike if registered
+      if (dislikedBy.includes(myUid)) {
+        dislikedBy = dislikedBy.filter((uid: string) => uid !== myUid);
+        downvotesCount = Math.max(0, downvotesCount - 1);
+      }
     }
 
     try {
       await updateDoc(doc(db, 'comments', commentId), {
         likedBy,
         upvotes: upvotesCount,
-        likesCount: upvotesCount
+        dislikedBy,
+        downvotes: downvotesCount
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Dislike a comment
+  const handleDislikeComment = async (commentId: string) => {
+    if (isBanned) {
+      triggerNotification("Your account is currently banned.", true);
+      return;
+    }
+
+    const commentDoc = allComments.find(c => c.id === commentId);
+    if (!commentDoc) return;
+
+    let likedBy = commentDoc.likedBy || [];
+    let upvotesCount = commentDoc.upvotes || 0;
+    let dislikedBy = commentDoc.dislikedBy || [];
+    let downvotesCount = commentDoc.downvotes || 0;
+
+    const isDisliked = dislikedBy.includes(myUid);
+    if (isDisliked) {
+      dislikedBy = dislikedBy.filter((uid: string) => uid !== myUid);
+      downvotesCount = Math.max(0, downvotesCount - 1);
+    } else {
+      dislikedBy.push(myUid);
+      downvotesCount += 1;
+      // Remove like if registered
+      if (likedBy.includes(myUid)) {
+        likedBy = likedBy.filter((uid: string) => uid !== myUid);
+        upvotesCount = Math.max(0, upvotesCount - 1);
+      }
+    }
+
+    try {
+      await updateDoc(doc(db, 'comments', commentId), {
+        likedBy,
+        upvotes: upvotesCount,
+        dislikedBy,
+        downvotes: downvotesCount
       });
     } catch (err) {
       console.error(err);
@@ -866,7 +866,8 @@ export default function CommunityScreen({
 
     try {
       await updateDoc(doc(db, 'comments', commentId), {
-        text: editingCommentText.trim()
+        text: editingCommentText.trim(),
+        content: editingCommentText.trim()
       });
       setEditingCommentId(null);
       setEditingCommentText('');
@@ -880,23 +881,16 @@ export default function CommunityScreen({
   // Delete Comment (Cascade removes or simple flags)
   const executeDeleteComment = async (commentId: string, parentPostId: string | undefined) => {
     try {
-      // 1. Delete any child comments that had this parentId
-      const children = allComments.filter(c => c.parentId === commentId);
-      for (const child of children) {
-        await deleteDoc(doc(db, 'comments', child.id));
-      }
-
-      // 2. Delete the original comment
+      // Delete the original comment
       await deleteDoc(doc(db, 'comments', commentId));
 
-      // 3. Subtract count from thread
+      // Subtract count from thread
       if (parentPostId) {
         const postRef = doc(db, 'threads', parentPostId);
         const matchedPost = posts.find(p => p.threadId === parentPostId);
         if (matchedPost) {
-          const totalRemovedCount = 1 + children.length;
           await updateDoc(postRef, {
-            commentsCount: Math.max(0, (matchedPost.commentsCount || 0) - totalRemovedCount)
+            commentsCount: Math.max(0, (matchedPost.commentsCount || 0) - 1)
           });
         }
       }
@@ -915,201 +909,18 @@ export default function CommunityScreen({
     }
   };
 
-  // Recursive Tree Compiler
-  const renderConversationTree = (parentId: string | null, depth = 0): React.ReactNode => {
-    if (!selectedPost) return null;
-
-    // Filter replies at this level of hierarchy
-    const levelComments = allComments.filter(c => c.characterId === selectedPost.threadId && c.parentId === parentId);
-
-    if (levelComments.length === 0) return null;
-
-    return (
-      <div className={`flex flex-col gap-3.5 ${depth > 0 ? 'pl-4 border-l border-zinc-800/80 ml-2' : ''}`}>
-        {levelComments.map((comment) => {
-          const authorMeta = getUserMeta(comment.userId);
-          const isOwner = comment.userId === myUid;
-          const showReplyActions = replyingToCommentId === comment.id;
-          const showInlineEdit = editingCommentId === comment.id;
-          const isLiked = (comment.likedBy || []).includes(myUid);
-
-          return (
-            <div 
-              key={comment.id}
-              className={`p-3 rounded-xl border transition-all text-left flex flex-col gap-2 relative ${
-                comment.reported 
-                  ? 'border-rose-500/30 bg-rose-950/10' 
-                  : 'border-zinc-800/60 bg-zinc-900/30 hover:border-zinc-800'
-              }`}
-            >
-              {/* Comment Header info */}
-              <div className="flex justify-between items-center flex-wrap gap-2 text-xs">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-[#ffae58]">{comment.username}</span>
-                  
-                  {/* Badged Rank */}
-                  <span className={`text-[8.5px] px-1.5 py-0.5 rounded-full border tracking-wide font-medium ${authorMeta.color} ${authorMeta.bg}`}>
-                    {authorMeta.rank}
-                  </span>
-
-                  {comment.replyToUser && (
-                    <div className="flex items-center gap-1 text-[10px] text-zinc-500">
-                      <ChevronRight className="w-3 h-3 text-zinc-600" />
-                      <span>replying to</span>
-                      <span className="font-semibold text-zinc-400">@{comment.replyToUser}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2.5 text-[10.5px] text-zinc-500">
-                  <span>{new Date(comment.timestamp).toLocaleDateString()}</span>
-                  <span>{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-              </div>
-
-              {/* Comment Content inline edit state */}
-              {showInlineEdit ? (
-                <div className="flex flex-col gap-2 mt-1">
-                  <textarea
-                    value={editingCommentText}
-                    onChange={(e) => setEditingCommentText(e.target.value)}
-                    className="w-full text-zinc-100 text-xs bg-zinc-950 border border-[#ffcd91]/30 rounded-lg p-2.5 focus:outline-none focus:border-[#ffcd91] font-sans"
-                    rows={2}
-                    maxLength={1500}
-                  />
-                  <div className="flex justify-end gap-1.5 text-[10px]">
-                    <button 
-                      onClick={() => setEditingCommentId(null)}
-                      className="px-2.5 py-1 rounded bg-zinc-900 hover:bg-zinc-800 hover:text-zinc-300 text-zinc-400 transition"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      onClick={() => handleSaveCommentEdit(comment.id)}
-                      className="px-2.5 py-1 rounded bg-[#ffae58] text-zinc-950 font-semibold hover:bg-[#ffa03f] transition"
-                    >
-                      Save Changes
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-zinc-200 text-xs font-sans leading-relaxed break-words pl-0.5 whitespace-pre-wrap">
-                  {comment.text}
-                </p>
-              )}
-
-              {/* Action Rows */}
-              <div className="flex items-center gap-4 mt-1 border-t border-zinc-900/40 pt-2 text-[10px] text-zinc-400">
-                {/* Like Button */}
-                <button
-                  onClick={() => handleLikeComment(comment.id)}
-                  className={`flex items-center gap-1.5 transition-all hover:text-rose-400 ${
-                    isLiked ? 'text-rose-400 font-semibold font-mono' : 'text-zinc-500'
-                  }`}
-                >
-                  <ThumbsUp className={`w-3 h-3 ${isLiked ? 'fill-current' : ''}`} />
-                  <span>{comment.upvotes || 0}</span>
-                </button>
-
-                {/* Reply triggers inline */}
-                {!isBanned && (
-                  <button
-                    onClick={() => {
-                      setReplyingToCommentId(comment.id);
-                      setReplyText('');
-                    }}
-                    className="flex items-center gap-1.5 text-zinc-500 hover:text-[#ffae58] transition"
-                  >
-                    <MessageSquare className="w-3 h-3" />
-                    <span>Reply</span>
-                  </button>
-                )}
-
-                {/* Report icon */}
-                {!isOwner && (
-                  <button
-                    onClick={() => setReportingItem({ id: comment.id, type: 'comment', content: comment.text })}
-                    className="text-zinc-600 hover:text-rose-400 transition flex items-center gap-1 ml-auto"
-                    title="Report Comment"
-                  >
-                    <Flag className="w-3 h-3" />
-                    <span>Report</span>
-                  </button>
-                )}
-
-                {/* Edit & Delete for user/admin */}
-                {(isOwner || isUserModerator) && (
-                  <div className="flex items-center gap-2 ml-auto">
-                    {isOwner && !showInlineEdit && (
-                      <button
-                        onClick={() => {
-                          setEditingCommentId(comment.id);
-                          setEditingCommentText(comment.text);
-                        }}
-                        className="text-zinc-500 hover:text-[#ffcd91] transition flex items-center gap-0.5"
-                      >
-                        <Edit className="w-3 h-3" />
-                        <span>Edit</span>
-                      </button>
-                    )}
-
-                    {/* Visually different Delete button with shield icon for admin deletes */}
-                    {isUserModerator && !isOwner ? (
-                      <button
-                        onClick={() => setDeletingItem({ id: comment.id, type: 'comment', parentPostId: selectedPost.threadId })}
-                        className="px-1.5 py-0.5 rounded border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/15 text-rose-400 transition-all flex items-center gap-1 font-semibold text-[8px] tracking-wide uppercase"
-                      >
-                        <Shield className="w-2.5 h-2.5 text-rose-400" />
-                        <span>Mod Delete</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setDeletingItem({ id: comment.id, type: 'comment', parentPostId: selectedPost.threadId })}
-                        className="text-zinc-500 hover:text-rose-400 transition flex items-center gap-0.5"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        <span>Delete</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Inline nested reply input */}
-              {showReplyActions && (
-                <div className="flex flex-col gap-2.5 mt-2.5 p-2 bg-zinc-950/60 border border-[#ffcd91]/15 rounded-xl">
-                  <textarea
-                    placeholder={`Reply to @${comment.username}...`}
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    className="w-full text-zinc-100 text-xs bg-zinc-950 focus:outline-none p-2 rounded focus:border-[#ffcd91]/40 border border-zinc-800"
-                    rows={2}
-                    maxLength={1000}
-                  />
-                  <div className="flex justify-end gap-1.5 text-[10px]">
-                    <button 
-                      onClick={() => setReplyingToCommentId(null)}
-                      className="px-2.5 py-1 rounded bg-zinc-900 text-zinc-400 hover:bg-zinc-800"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      onClick={(e) => handleAddNestedReply(e, comment.id, comment.username, selectedPost.threadId)}
-                      className="px-3.5 py-1 rounded bg-[#ffae58] text-zinc-950 font-bold hover:bg-[#ffa03f]"
-                    >
-                      Post Reply
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Stagger recursively */}
-              {renderConversationTree(comment.id, depth + 1)}
-            </div>
-          );
-        })}
-      </div>
-    );
+  const handleReplyClick = (targetUsername: string) => {
+    if (commentInputRef.current) {
+      commentInputRef.current.focus();
+      const currentVal = newCommentText.trim();
+      const prefix = `@${targetUsername} `;
+      if (!currentVal.startsWith(`@${targetUsername}`)) {
+        setNewCommentText(prefix + (currentVal ? " " + currentVal : ""));
+      }
+    } else {
+      const currentVal = newCommentText.trim();
+      setNewCommentText(`@${targetUsername} ` + currentVal);
+    }
   };
 
   // Administration Controls Actions
@@ -1414,75 +1225,104 @@ export default function CommunityScreen({
         
         {/* FEED FILTERS LEFT COLUMN */}
         {activeSection !== 'admin' && (
-          <div className="lg:col-span-1 flex flex-col gap-4">
-            
-            {/* Search Input Card */}
-            <div className="p-4 bg-zinc-950/50 border border-zinc-900 rounded-2xl">
-              <h4 className="text-xs font-extrabold text-[#ffa83e] mb-3 uppercase tracking-wider flex items-center gap-1.5">
-                <Search className="w-3.5 h-3.5 text-amber-500" /> Filter Debates
-              </h4>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Type to search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full text-zinc-100 text-xs bg-zinc-900 border border-zinc-800 rounded-xl py-2.5 pl-9 pr-3 focus:outline-none focus:border-amber-500 transition-all text-left"
-                />
-                <Search className="w-4 h-4 text-zinc-600 absolute left-3 top-3.5" />
+          <>
+            {/* Mobile Filter Toggle Header Button */}
+            <button
+              type="button"
+              onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)}
+              className="lg:hidden w-full flex items-center justify-between p-4 bg-gradient-to-r from-zinc-900 to-zinc-950 border border-zinc-805/80 rounded-2xl text-xs font-bold uppercase text-zinc-100 shadow-lg mb-1 cursor-pointer select-none"
+            >
+              <span className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-amber-500" />
+                <span>Refine Arena Feed</span>
+                {(selectedCategory || searchQuery.trim()) && (
+                  <span className="w-2 h-2 rounded-full bg-amber-505 animate-pulse" />
+                )}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400 lowercase font-medium">
+                  {selectedCategory ? `${selectedCategory.split(' ').slice(1).join(' ') || selectedCategory}` : 'all categories'}
+                </span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${isMobileFiltersOpen ? 'rotate-180 text-amber-500' : 'text-zinc-400'}`} />
+              </div>
+            </button>
+
+            <div className={`${isMobileFiltersOpen ? 'flex' : 'hidden'} lg:flex lg:col-span-1 flex-col gap-4 w-full`}>
+              
+              {/* Search Input Card */}
+              <div className="p-4 bg-zinc-950/80 border border-zinc-900/60 rounded-2xl shadow-xl w-full">
+                <h4 className="text-xs font-extrabold text-amber-400 mb-3 uppercase tracking-wider flex items-center gap-1.5 border-b border-zinc-900 pb-2">
+                  <Search className="w-3.5 h-3.5 text-amber-500" /> Filter Debates
+                </h4>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search keywords..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full text-zinc-100 placeholder-zinc-550 text-xs bg-zinc-900 border border-zinc-800 rounded-xl py-2.5 pl-9 pr-3 focus:outline-none focus:border-amber-550 focus:ring-1 focus:ring-amber-500/10 transition-all text-left"
+                  />
+                  <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-3.5" />
+                </div>
+
+                {/* Reset filter trigger */}
+                {(selectedCategory || searchQuery.trim()) && (
+                  <button
+                    onClick={() => {
+                      setSelectedCategory(null);
+                      setSearchQuery('');
+                      setIsMobileFiltersOpen(false);
+                    }}
+                    className="w-full mt-3 px-2 py-2 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold uppercase transition-all tracking-wider"
+                  >
+                    Clear Feed Filters
+                  </button>
+                )}
               </div>
 
-              {/* Reset filter trigger */}
-              {(selectedCategory || searchQuery.trim()) && (
-                <button
-                  onClick={() => {
-                    setSelectedCategory(null);
-                    setSearchQuery('');
-                  }}
-                  className="w-full mt-3 px-2 py-1.5 rounded bg-rose-500/5 border border-rose-500/20 text-rose-400 text-[10px] font-bold uppercase transition hover:bg-rose-500/10"
-                >
-                  Clear Filters
-                </button>
-              )}
-            </div>
+              {/* Sorter Selector */}
+              <div className="p-4 bg-zinc-950/80 border border-zinc-900/60 rounded-2xl shadow-xl w-full flex flex-col gap-2">
+                <h4 className="text-xs font-extrabold text-amber-400 mb-1.5 uppercase tracking-wider flex items-center gap-1.5 border-b border-zinc-900 pb-2">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-amber-500" /> Sort Order
+                </h4>
+                <div className="flex flex-col gap-1.5 text-left">
+                  <button
+                    onClick={() => setSortOption('newest')}
+                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                      sortOption === 'newest' 
+                        ? 'bg-amber-500/10 border border-amber-500/30 text-amber-300' 
+                        : 'text-zinc-400 hover:bg-zinc-900/40 border border-transparent'
+                    }`}
+                  >
+                    <span>Newest Debates</span>
+                    <Clock className="w-3.5 h-3.5" />
+                  </button>
 
-            {/* Sorter Selector */}
-            <div className="p-4 bg-zinc-950/50 border border-zinc-900 rounded-2xl flex flex-col gap-2">
-              <h4 className="text-xs font-extrabold text-[#ffa83e] mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
-                <SlidersHorizontal className="w-3.5 h-3.5 text-amber-500" /> Sort Order
-              </h4>
-              <div className="flex flex-col gap-1.5 text-left">
-                <button
-                  onClick={() => setSortOption('newest')}
-                  className={`w-full px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-all ${
-                    sortOption === 'newest' ? 'bg-zinc-900 text-amber-300' : 'text-zinc-400 hover:bg-zinc-900/30'
-                  }`}
-                >
-                  <span>Newest Debates</span>
-                  <Clock className="w-3 h-3" />
-                </button>
+                  <button
+                    onClick={() => setSortOption('likes')}
+                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                      sortOption === 'likes' 
+                        ? 'bg-amber-500/10 border border-amber-500/30 text-amber-300' 
+                        : 'text-zinc-400 hover:bg-zinc-900/40 border border-transparent'
+                    }`}
+                  >
+                    <span>Most Liked</span>
+                    <Heart className="w-3.5 h-3.5" />
+                  </button>
 
-                <button
-                  onClick={() => setSortOption('likes')}
-                  className={`w-full px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-all ${
-                    sortOption === 'likes' ? 'bg-zinc-900 text-amber-300' : 'text-zinc-400 hover:bg-zinc-900/30'
-                  }`}
-                >
-                  <span>Most Liked</span>
-                  <Heart className="w-3 h-3" />
-                </button>
-
-                <button
-                  onClick={() => setSortOption('active')}
-                  className={`w-full px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-all ${
-                    sortOption === 'active' ? 'bg-zinc-900 text-amber-300' : 'text-zinc-400 hover:bg-zinc-900/30'
-                  }`}
-                >
-                  <span>Most Active</span>
-                  <MessageSquare className="w-3 h-3" />
-                </button>
+                  <button
+                    onClick={() => setSortOption('active')}
+                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                      sortOption === 'active' 
+                        ? 'bg-amber-500/10 border border-amber-500/30 text-amber-300' 
+                        : 'text-zinc-400 hover:bg-zinc-900/40 border border-transparent'
+                    }`}
+                  >
+                    <span>Most Active</span>
+                    <MessageSquare className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-            </div>
 
             {/* Dynamic & Managed list of Categories menu */}
             <div ref={categoryDropdownRef} className="relative w-full">
@@ -1654,9 +1494,9 @@ export default function CommunityScreen({
                 )}
               </AnimatePresence>
             </div>
-
           </div>
-        )}
+        </>
+      )}
 
         {/* FEED CONTENT COLUMN or ADMIN CONTROL TABS PANEL */}
         <div className={activeSection === 'admin' ? 'lg:col-span-4' : 'lg:col-span-3'}>
@@ -1974,46 +1814,46 @@ export default function CommunityScreen({
                   return (
                     <div
                       key={post.threadId}
-                      className={`p-6 rounded-3xl border text-left flex flex-col gap-4 transition-all relative cursor-pointer group bg-zinc-950/50 backdrop-blur ${
+                      className={`p-5 md:p-6 rounded-2xl border text-left flex flex-col gap-5 transition-all relative cursor-pointer group bg-gradient-to-b from-[#0e0e12]/95 to-[#050508]/98 backdrop-blur-md ${
                         post.reported 
-                          ? 'border-rose-500/30' 
-                          : 'border-zinc-900/80 hover:border-zinc-800/70 shadow-[0_4px_24px_rgba(0,0,0,0.15)] hover:shadow-amber-500/2'
+                          ? 'border-rose-500/40 bg-rose-950/5' 
+                          : 'border-zinc-850/80 hover:border-amber-500/30 hover:shadow-[0_0_25px_rgba(245,158,11,0.06)] shadow-lg shadow-black/35'
                       }`}
                       onClick={() => setSelectedPost(post)}
                     >
                       {/* Top Header Row of card info */}
-                      <div className="flex justify-between items-center flex-wrap gap-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500/10 to-orange-500/5 border border-zinc-800 flex items-center justify-center font-black text-[#ffae58] text-xs shrink-0">
+                      <div className="flex justify-between items-start sm:items-center flex-wrap sm:flex-nowrap gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center font-black text-amber-500 text-xs shrink-0 shadow-inner">
                             {post.userAvatar || post.username?.slice(0, 2).toUpperCase() || 'FC'}
                           </div>
 
-                          <div className="text-left">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-xs text-zinc-100 hover:text-[#ffae58] transition">{post.username}</span>
+                          <div className="text-left flex flex-col">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-extrabold text-sm text-zinc-100 group-hover:text-amber-400 transition-colors">@{post.username}</span>
                               {/* Band rank badge */}
-                              <span className={`text-[8.5px] px-1.5 py-0.5 rounded-full border font-bold ${authorMeta.color} ${authorMeta.bg}`}>
+                              <span className={`text-[8px] px-1.5 py-0.5 rounded-md border tracking-wider font-extrabold uppercase ${authorMeta.color} ${authorMeta.bg}`}>
                                 {authorMeta.rank}
                               </span>
                             </div>
-                            <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
+                            <span className="text-[10px] text-zinc-500 font-mono mt-0.5">
                               {new Date(post.timestamp).toLocaleDateString()}
                             </span>
                           </div>
                         </div>
 
                         {/* Category badge Tag */}
-                        <div className="bg-zinc-900/60 border border-zinc-800 text-[#ffae58] text-[9px] font-extrabold px-3 py-1 rounded-xl tracking-tight uppercase max-w-[200px] truncate shrink-0">
+                        <div className="bg-amber-500/5 border border-amber-500/15 text-[#ffa83e] text-[9px] font-black px-2.5 py-1 rounded-md tracking-wider uppercase max-w-[200px] truncate shrink-0">
                           {post.category}
                         </div>
                       </div>
 
                       {/* Content Section clickable details */}
-                      <div className="flex flex-col gap-1.5">
-                        <h3 className="text-base font-black text-zinc-150 tracking-tight leading-snug group-hover:text-amber-300 transition-all">
+                      <div className="flex flex-col gap-2">
+                        <h3 className="text-base md:text-lg font-black text-zinc-100 tracking-tight leading-snug group-hover:text-amber-300 transition-all">
                           {post.title}
                         </h3>
-                        <p className="text-zinc-400 text-xs font-sans leading-relaxed break-words whitespace-pre-wrap">
+                        <p className="text-zinc-400 text-xs md:text-sm font-sans leading-relaxed break-words whitespace-pre-wrap line-clamp-3">
                           {post.description.length > 280 
                             ? `${post.description.slice(0, 280)}...` 
                             : post.description}
@@ -2022,52 +1862,58 @@ export default function CommunityScreen({
 
                       {/* Bottom row triggers bar */}
                       <div 
-                        className="flex items-center gap-4 border-t border-zinc-900/50 pt-3 text-[11px] text-zinc-500 font-semibold"
+                        className="flex items-center gap-3 border-t border-zinc-900/60 pt-4 text-xs text-zinc-500 font-semibold flex-wrap sm:flex-nowrap"
                         onClick={(e) => e.stopPropagation()} // exclude overlay triggers
                       >
                         {/* Likes button block */}
                         <button
                           onClick={() => handleToggleLike(post.threadId)}
-                          className={`flex items-center gap-1.5 py-1 px-3 rounded-lg border transition-all ${
+                          className={`flex items-center gap-1.5 py-1.5 px-3.5 rounded-full border text-xs transition-all ${
                             isLiked 
-                              ? 'bg-amber-500/10 border-amber-500/40 text-amber-300' 
-                              : 'bg-zinc-950/20 border-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-800'
+                              ? 'bg-amber-500/10 border-amber-500/30 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.05)]' 
+                              : 'bg-zinc-900/40 border-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-800'
                           }`}
                         >
                           <ThumbsUp className="w-3.5 h-3.5" />
-                          <span className="font-mono">{postLikesCount}</span>
+                          <span className="font-mono text-xs">{postLikesCount}</span>
                         </button>
 
                         {/* Dislikes button block */}
                         <button
                           onClick={() => handleToggleDislike(post.threadId)}
-                          className={`flex items-center gap-1.5 py-1 px-3 rounded-lg border transition-all ${
+                          className={`flex items-center gap-1.5 py-1.5 px-3.5 rounded-full border text-xs transition-all ${
                             isDisliked 
-                              ? 'bg-rose-500/10 border-rose-500/40 text-rose-300' 
-                              : 'bg-zinc-950/20 border-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-800'
+                              ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' 
+                              : 'bg-zinc-900/40 border-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-800'
                           }`}
                         >
                           <ThumbsDown className="w-3.5 h-3.5" />
-                          <span className="font-mono">{postDislikesCount}</span>
+                          <span className="font-mono text-xs">{postDislikesCount}</span>
                         </button>
 
                         {/* Comments overview trigger */}
                         <button
                           onClick={() => setSelectedPost(post)}
-                          className="flex items-center gap-1.5 text-zinc-500 hover:text-amber-400 transition"
+                          className="flex items-center gap-1.5 py-1.5 px-3.5 rounded-full border border-zinc-905 bg-zinc-900/40 text-zinc-550 hover:text-amber-400 hover:border-amber-500/20 transition-all text-xs"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
-                          <span>{post.commentsCount || 0}</span>
+                          <span className="font-mono">{post.commentsCount || 0}</span>
                         </button>
 
                         {/* Report Post Trigger */}
                         {!isOwner && (
                           <button
-                            onClick={() => setReportingItem({ id: post.threadId, type: 'post', content: post.title })}
-                            className="text-zinc-650 hover:text-rose-400 transition flex items-center gap-1 ml-auto"
+                            onClick={() => {
+                              if (isGuest) {
+                                triggerNotification("Guest accounts cannot report content.", true);
+                                return;
+                              }
+                              setReportingItem({ id: post.threadId, type: 'post', content: post.title });
+                            }}
+                            className="text-zinc-650 hover:text-rose-400 transition flex items-center gap-1 ml-auto py-1 px-2.5 hover:bg-rose-500/5 rounded-full text-xs"
                             title="Report Abuse"
                           >
-                            <Flag className="w-3.5 h-3.5 font-bold" />
+                            <Flag className="w-3.5 h-3.5" />
                             <span>Report</span>
                           </button>
                         )}
@@ -2097,7 +1943,7 @@ export default function CommunityScreen({
                             ) : (
                               <button
                                 onClick={() => setDeletingItem({ id: post.threadId, type: 'post' })}
-                                className="text-zinc-500 hover:text-rose-400 transition flex items-center gap-1 py-1 px-2.5 hover:bg-rose-500/5 rounded-lg"
+                                className="text-zinc-500 hover:text-rose-400 transition flex items-center gap-1 py-1 px-2.5 hover:bg-[#ef4444]/5 rounded-lg"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                                 <span>Delete</span>
@@ -2369,116 +2215,290 @@ export default function CommunityScreen({
          ======================================================== */}
       <AnimatePresence>
         {selectedPost && (
-          <div className="fixed inset-0 z-40 bg-black/90 backdrop-blur-sm flex justify-end">
+          <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md flex justify-end">
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="w-full max-w-3xl bg-zinc-950 border-l border-zinc-900 shadow-2xl h-screen flex flex-col text-left overflow-y-auto"
+              transition={{ type: 'spring', damping: 26, stiffness: 210 }}
+              className="w-full max-w-2xl bg-zinc-950 md:border-l border-zinc-900 shadow-2xl h-screen flex flex-col text-left overflow-hidden"
             >
               {/* Overlay header */}
-              <div className="sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-lg border-b border-zinc-900 p-4 flex items-center justify-between">
-                <span className="text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-550 px-2.5 py-0.5 rounded font-extrabold uppercase">
-                  {selectedPost.category}
-                </span>
+              <div className="shrink-0 bg-[#0e0e12]/95 border-b border-zinc-900 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-amber-500 animate-pulse" />
+                  <span className="text-xs font-black text-zinc-100 uppercase tracking-widest">Discussion Area</span>
+                </div>
                 
                 <button
                   onClick={() => setSelectedPost(null)}
-                  className="p-1 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition flex items-center gap-1.5 text-xs font-bold"
+                  className="p-1.5 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition flex items-center gap-1 text-xs font-bold cursor-pointer"
                 >
-                  <X className="w-4 h-4" /> Close
+                  <X className="w-3.5 h-3.5" /> Close
                 </button>
               </div>
 
-              {/* Main Content inside Overlay drawer */}
-              <div className="p-6 flex flex-col gap-6 flex-1">
+              {/* Pinned Debate Context Card - ALWAYS visible at the top */}
+              <div className="shrink-0 bg-gradient-to-b from-[#101015] to-[#060609] border-b border-zinc-900/90 p-5 md:p-6 flex flex-col gap-4 shadow-xl shadow-black/20">
+                {/* Metadata row */}
+                <div className="flex items-center gap-2 flex-wrap text-xs">
+                  <span className="bg-amber-500/10 border border-amber-500/15 text-[#ffa83e] text-[9px] font-black px-2 py-0.5 rounded tracking-wider uppercase">
+                    {selectedPost.category}
+                  </span>
+                  <span className="text-zinc-700 font-bold">•</span>
+                  <span className="text-zinc-500 text-[10px]">Initiated by</span>
+                  <span className="font-extrabold text-[#ffa03f]">@{selectedPost.username}</span>
+                  <span className={`text-[8px] px-1.5 py-0.5 rounded-md border tracking-wide font-extrabold uppercase ${getUserMeta(selectedPost.userId).color} ${getUserMeta(selectedPost.userId).bg}`}>
+                    {getUserMeta(selectedPost.userId).rank}
+                  </span>
+                  <span className="ml-auto text-zinc-500 font-mono text-[10px]">
+                    {new Date(selectedPost.timestamp).toLocaleDateString()}
+                  </span>
+                </div>
                 
-                {/* Selected full post display */}
-                <div className="pb-5 border-b border-zinc-900 flex flex-col gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-zinc-500 text-[10.5px]">Posted by</span>
-                    <span className="font-bold text-[#ffae58] text-xs">@{selectedPost.username}</span>
-                    <span className={`text-[8px] px-1.5 py-0.5 rounded-full border font-bold ${getUserMeta(selectedPost.userId).color} ${getUserMeta(selectedPost.userId).bg}`}>
-                      {getUserMeta(selectedPost.userId).rank}
-                    </span>
-                    <span className="text-zinc-500 text-xs ml-auto">
-                      {new Date(selectedPost.timestamp).toLocaleDateString()}
-                    </span>
-                  </div>
-
-                  <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-white leading-snug">
-                    {selectedPost.title}
-                  </h1>
-
-                  <p className="text-zinc-300 text-xs md:text-sm font-sans leading-relaxed whitespace-pre-wrap pl-0.5 bg-zinc-950/40 p-4 rounded-2xl border border-zinc-900/50">
+                {/* Title */}
+                <h1 className="text-base md:text-lg font-black text-zinc-50 tracking-tight leading-snug">
+                  {selectedPost.title}
+                </h1>
+                
+                {/* Scrollable description box under height limits */}
+                {selectedPost.description && (
+                  <div className="max-h-24 overflow-y-auto pr-2 font-sans text-xs text-zinc-300 leading-relaxed bg-zinc-950/50 border border-zinc-900 p-3 rounded-xl whitespace-pre-wrap">
                     {selectedPost.description}
-                  </p>
-
-                  <div className="flex items-center gap-3 mt-1.5 text-xs text-zinc-400">
-                    <span className="bg-zinc-900 px-3 py-1.5 rounded-xl text-[11px] border border-zinc-850">
-                      👍 {selectedPost.likedBy?.length || selectedPost.upvotes || 0} Likes
-                    </span>
-                    <span className="bg-zinc-900 px-3 py-1.5 rounded-xl text-[11px] border border-zinc-850">
-                      👎 {selectedPost.dislikedBy?.length || selectedPost.downvotes || 0} Dislikes
-                    </span>
-                    <span className="bg-zinc-900 px-3 py-1.5 rounded-xl text-[11px] border border-zinc-850">
-                      💬 {selectedPost.commentsCount || 0} Discussions
-                    </span>
                   </div>
+                )}
+                
+                {/* Interactive stats totals row */}
+                <div className="flex items-center gap-2.5 text-xs text-zinc-500 flex-wrap">
+                  <span className="bg-zinc-900/60 px-3 py-1.5 rounded-full border border-zinc-850/80 flex items-center gap-1 font-mono text-[10px]">
+                    👍 <span className="text-zinc-300 font-bold">{selectedPost.likedBy?.length || selectedPost.upvotes || 0}</span>
+                  </span>
+                  <span className="bg-zinc-900/60 px-3 py-1.5 rounded-full border border-zinc-850/80 flex items-center gap-1 font-mono text-[10px]">
+                    👎 <span className="text-zinc-300 font-bold">{selectedPost.dislikedBy?.length || selectedPost.downvotes || 0}</span>
+                  </span>
+                  <span className="bg-zinc-900/60 px-3 py-1.5 rounded-full border border-zinc-850/85 flex items-center gap-1.5 font-mono text-[10px] text-amber-400 font-extrabold">
+                    <MessageSquare className="w-3 h-3 text-amber-500" />
+                    <span>{selectedPost.commentsCount || 0} discussions</span>
+                  </span>
                 </div>
+              </div>
 
-                {/* Submitting comments block */}
-                <div className="flex flex-col gap-2.5">
-                  <h3 className="text-xs font-bold text-[#ffae58] uppercase tracking-widest pl-0.5 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" /> Post Your Comment
-                  </h3>
-                  
-                  {isBanned ? (
-                    <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-rose-400 animate-pulse" /> Comments are banned for this profile.
-                    </div>
-                  ) : (
-                    <form onSubmit={(e) => handleAddRootComment(e, selectedPost.threadId)} className="flex flex-col gap-2">
-                      <textarea
-                        placeholder="Add to the conversation with logical insight. Insults are reportable..."
-                        value={newCommentText}
-                        onChange={(e) => setNewCommentText(e.target.value)}
-                        required
-                        className="w-full text-zinc-100 text-xs bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 focus:outline-none focus:border-amber-500 text-left font-sans"
-                        rows={3}
-                        maxLength={1500}
-                      />
-                      <div className="flex justify-end pr-0.5">
-                        <button
-                          type="submit"
-                          className="px-5 py-2.5 bg-gradient-to-tr from-amber-500 to-amber-600 text-zinc-950 font-black rounded-xl text-xs flex items-center gap-1 hover:bg-[#ffa03f]"
-                        >
-                          <Send className="w-3.5 h-3.5" /> Submit Comment
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </div>
+              {/* Scrollable Comments Area below pinned context */}
+              <div className="flex-1 overflow-y-auto p-5 md:p-6 flex flex-col gap-6">
 
-                {/* RECURSIVE COMMENTS FEED */}
-                <div className="flex flex-col gap-4 mt-2">
+                {/* FLAT CHRONOLOGICAL COMMENTS FEED */}
+                <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-2 border-b border-zinc-900 pb-2.5 font-bold text-xs uppercase tracking-wider text-zinc-400">
                     <MessageSquare className="w-4 h-4 text-amber-500" /> 
-                    <span>Live Conversation Tree</span>
+                    <span>Live Discussion Feed</span>
                   </div>
 
-                  {/* Render root comments depth-0 */}
+                  {/* Render comments flat ordered by timestamp ascending */}
                   <div className="flex flex-col gap-4">
-                    {allComments.filter(c => c.characterId === selectedPost.threadId && c.parentId === null).length === 0 ? (
-                      <p className="text-zinc-600 text-xs pl-1">No comments posted yet. Start the chain opinion!</p>
-                    ) : (
-                      renderConversationTree(null, 0)
-                    )}
+                    {(() => {
+                      const postComments = allComments.filter(
+                        c => c.postId === selectedPost.threadId || c.characterId === selectedPost.threadId
+                      );
+                      if (postComments.length === 0) {
+                        return <p className="text-zinc-650 text-xs pl-1">No comments posted yet. Start the discussion!</p>;
+                      }
+                      return postComments.map((comment) => {
+                        const isOwner = comment.userId === myUid;
+                        const isLiked = (comment.likedBy || []).includes(myUid);
+                        const isDisliked = (comment.dislikedBy || []).includes(myUid);
+                        const showInlineEdit = editingCommentId === comment.id;
+
+                        // Calculate badges dynamically
+                        const authorMeta = getUserMeta(comment.userId);
+
+                        return (
+                          <div 
+                            key={comment.id}
+                            className={`p-4 rounded-xl border transition-all text-left flex flex-col gap-3 relative ${
+                              comment.reported 
+                                ? 'border-rose-500/40 bg-rose-950/15 text-rose-300' 
+                                : 'border-zinc-900/60 bg-zinc-900/30 hover:border-zinc-800'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start flex-wrap gap-2 text-xs">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-extrabold text-[#ffa03f]">@{comment.username}</span>
+                                
+                                <span className={`text-[8px] px-1.5 py-0.5 rounded-md border tracking-wider font-extrabold uppercase ${authorMeta.color} ${authorMeta.bg}`}>
+                                  {authorMeta.rank}
+                                </span>
+
+                                {comment.replyToUsername && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/5 border border-amber-500/10 text-amber-400 text-[8px] font-black rounded uppercase tracking-wider">
+                                    ↳ replying to @{comment.replyToUsername}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-mono">
+                                <span>{new Date(comment.timestamp).toLocaleDateString()}</span>
+                                <span>{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                            </div>
+
+                            {/* Text content view */}
+                            {showInlineEdit ? (
+                              <div className="flex flex-col gap-2 mt-1">
+                                <textarea
+                                  value={editingCommentText}
+                                  onChange={(e) => setEditingCommentText(e.target.value)}
+                                  className="w-full text-zinc-100 text-xs bg-zinc-950 border border-amber-500/30 rounded-xl p-3 focus:outline-none focus:border-amber-500 font-sans"
+                                  rows={2}
+                                  maxLength={1500}
+                                />
+                                <div className="flex justify-end gap-1.5 text-[10px]">
+                                  <button 
+                                    onClick={() => setEditingCommentId(null)}
+                                    className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 hover:text-zinc-300 text-zinc-400 font-semibold transition"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button 
+                                    onClick={() => handleSaveCommentEdit(comment.id)}
+                                    className="px-3 py-1.5 rounded-xl bg-amber-500 text-zinc-950 font-extrabold hover:bg-amber-600 transition"
+                                  >
+                                    Save Changes
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-zinc-200 text-xs md:text-sm font-sans leading-relaxed break-words pl-0.5 whitespace-pre-wrap">
+                                {comment.text}
+                              </p>
+                            )}
+
+                            {/* Action Row */}
+                            <div className="flex items-center gap-3 mt-1 border-t border-zinc-900/60 pt-3 text-[10.5px] text-zinc-505 font-medium flex-wrap">
+                              <button
+                                onClick={() => handleLikeComment(comment.id)}
+                                className={`flex items-center gap-1.5 py-1 px-2.5 rounded-lg border transition-all ${
+                                  isLiked 
+                                    ? 'bg-[#ef4444]/10 border-[#ef4444]/30 text-rose-400 font-bold' 
+                                    : 'bg-zinc-900/40 border-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-850'
+                                }`}
+                                title="Like Comment"
+                              >
+                                <ThumbsUp className="w-3 h-3" />
+                                <span className="font-mono text-xs">{comment.upvotes || 0}</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleDislikeComment(comment.id)}
+                                className={`flex items-center gap-1.5 py-1 px-2.5 rounded-lg border transition-all ${
+                                  isDisliked 
+                                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 font-bold' 
+                                    : 'bg-zinc-900/40 border-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-850'
+                                }`}
+                                title="Dislike Comment"
+                              >
+                                <ThumbsDown className="w-3 h-3" />
+                                <span className="font-mono text-xs">{comment.downvotes || 0}</span>
+                              </button>
+
+                              {!isBanned && (
+                                <button
+                                  onClick={() => handleReplyClick(comment.username)}
+                                  className="flex items-center gap-1 px-2 py-1 rounded-lg border border-transparent hover:border-zinc-850 hover:bg-zinc-900 text-zinc-500 hover:text-amber-400 transition font-bold"
+                                >
+                                  <MessageSquare className="w-3 h-3" />
+                                  <span>Reply</span>
+                                </button>
+                              )}
+
+                              {!isOwner && (
+                                <button
+                                  onClick={() => setReportingItem({ id: comment.id, type: 'comment', content: comment.text })}
+                                  className="text-zinc-650 hover:text-rose-450 transition flex items-center gap-1 ml-auto py-1 px-2 hover:bg-rose-500/5 rounded-lg text-[10px]"
+                                  title="Report Comment"
+                                >
+                                  <Flag className="w-3 h-3" />
+                                  <span>Report</span>
+                                </button>
+                              )}
+
+                              {(isOwner || isUserModerator) && (
+                                <div className={`flex items-center gap-2 ${!isOwner ? 'ml-auto' : ''}`}>
+                                  {isOwner && !showInlineEdit && (
+                                    <button
+                                      onClick={() => {
+                                        setEditingCommentId(comment.id);
+                                        setEditingCommentText(comment.text);
+                                      }}
+                                      className="text-zinc-500 hover:text-amber-500 transition flex items-center gap-1 cursor-pointer py-1 px-2 hover:bg-zinc-900/30 rounded-lg"
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                      <span>Edit</span>
+                                    </button>
+                                  )}
+
+                                  {isUserModerator && !isOwner ? (
+                                    <button
+                                      onClick={() => setDeletingItem({ id: comment.id, type: 'comment', parentPostId: selectedPost.threadId })}
+                                      className="px-2 py-0.5 rounded border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/15 text-rose-400 transition-all flex items-center gap-1 font-black text-[8px] tracking-wide uppercase"
+                                    >
+                                      <Shield className="w-2.5 h-2.5 text-rose-400" />
+                                      <span>Mod Delete</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => setDeletingItem({ id: comment.id, type: 'comment', parentPostId: selectedPost.threadId })}
+                                      className="text-zinc-550 hover:text-rose-400 transition flex items-center gap-1 cursor-pointer py-1 px-2 hover:bg-rose-500/5 rounded-lg"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                      <span>Delete</span>
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
 
               </div>
+
+              {/* Docked Comment Form Box at bottom */}
+              <div className="shrink-0 bg-[#0c0c0e] border-t border-zinc-900/90 p-4 md:px-6 md:py-4 flex flex-col gap-2.5 shadow-[0_-8px_24px_rgba(0,0,0,0.45)]">
+                <h3 className="text-[10px] font-black text-amber-400 uppercase tracking-widest pl-0.5 flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" /> Join the Debate
+                </h3>
+                
+                {isBanned ? (
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-400 animate-pulse" /> Comments are banned for this profile.
+                  </div>
+                ) : (
+                  <form onSubmit={(e) => handleAddRootComment(e, selectedPost.threadId)} className="flex flex-col gap-2">
+                    <textarea
+                      ref={commentInputRef}
+                      placeholder="Contribute text insight to this debate pool... (use @username to reply)"
+                      value={newCommentText}
+                      onChange={(e) => setNewCommentText(e.target.value)}
+                      required
+                      className="w-full text-zinc-150 placeholder-zinc-600 text-xs bg-zinc-900/40 border border-zinc-850 rounded-xl p-3 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/15 text-left font-sans transition-all"
+                      rows={2}
+                      maxLength={1500}
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-gradient-to-tr from-amber-500 to-amber-600 text-zinc-950 font-black rounded-lg text-[11px] flex items-center gap-1 hover:brightness-110 active:scale-98 transition-all cursor-pointer"
+                      >
+                        <Send className="w-3 h-3" /> Submit Comment
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+
             </motion.div>
           </div>
         )}

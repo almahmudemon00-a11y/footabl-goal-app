@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { Sparkles, Medal, User, Flame, Moon, Sun, MessageSquare, Compass, Settings, CircleDot, Trophy } from 'lucide-react';
-import { Character, Comment, User as UserType, UserStats, ReplyComment } from './types.ts';
+import { Character, Comment, User as UserType, UserStats } from './types.ts';
 import { DEFAULT_CHARACTERS, PRE_SEEDED_COMMENTS } from './data.ts';
 
 // Firebase integration modules
@@ -358,13 +358,17 @@ export default function App() {
             const docRef = doc(commentsColRef, comment.id);
             await setDoc(docRef, {
               commentId: comment.id,
+              postId: charId,
               characterId: charId,
               userId: currentUid,
+              authorId: currentUid,
               username: comment.username,
               text: comment.text,
-              upvotes: comment.upvotes,
+              content: comment.text,
+              upvotes: comment.upvotes || 0,
               timestamp: comment.timestamp,
-              replies: comment.replies || []
+              createdAt: comment.timestamp,
+              likedBy: []
             });
           }
         }
@@ -387,19 +391,28 @@ export default function App() {
       const newComments: Record<string, Comment[]> = {};
       snapshot.forEach((doc) => {
         const data = doc.data();
-        const charId = data.characterId;
+        const charId = data.characterId || data.postId;
         if (charId) {
           if (!newComments[charId]) {
             newComments[charId] = [];
           }
           newComments[charId].push({
             id: doc.id,
-            userId: data.userId || '',
+            commentId: doc.id,
+            postId: charId,
+            characterId: charId,
+            userId: data.userId || data.authorId || '',
+            authorId: data.authorId || data.userId || '',
             username: data.username || 'Anonymous',
-            text: data.text || '',
+            text: data.text || data.content || '',
+            content: data.content || data.text || '',
             upvotes: data.upvotes || 0,
-            timestamp: data.timestamp || Date.now(),
-            replies: data.replies || []
+            timestamp: data.timestamp || data.createdAt || Date.now(),
+            createdAt: data.createdAt || data.timestamp || Date.now(),
+            likedBy: data.likedBy || [],
+            downvotes: data.downvotes || 0,
+            dislikedBy: data.dislikedBy || [],
+            replyToUsername: data.replyToUsername || undefined
           });
         }
       });
@@ -491,7 +504,7 @@ export default function App() {
   // Sync custom google sheets URL changes when sheetUrl changes (e.g. from global state sync or user setting)
   useEffect(() => {
     if (sheetUrl) {
-      fetchGoogleSheetData(sheetUrl).catch(() => {
+      fetchGoogleSheetData(sheetUrl, false).catch(() => {
         setCharacters(DEFAULT_CHARACTERS);
       });
     } else {
@@ -596,7 +609,7 @@ export default function App() {
   };
 
   // Google Sheets Fetcher + Parser
-  const fetchGoogleSheetData = async (url: string): Promise<{ success: boolean; error?: string }> => {
+  const fetchGoogleSheetData = async (url: string, persistToFirestore: boolean = false): Promise<{ success: boolean; error?: string }> => {
     setIsSheetLoading(true);
     try {
       let parsedUrl = url.trim();
@@ -605,14 +618,16 @@ export default function App() {
         setCharacters(DEFAULT_CHARACTERS);
         setSheetUrl('');
         localStorage.removeItem('custom_sheet_url');
-        try {
-          await setDoc(doc(db, 'settings', 'global_config'), {
-            custom_sheet_url: '',
-            feedback_email: feedbackEmail,
-            updatedAt: serverTimestamp()
-          });
-        } catch (error) {
-          handleFirestoreError(error, OperationType.WRITE, 'settings/global_config');
+        if (persistToFirestore) {
+          try {
+            await setDoc(doc(db, 'settings', 'global_config'), {
+              custom_sheet_url: '',
+              feedback_email: feedbackEmail,
+              updatedAt: serverTimestamp()
+            });
+          } catch (error) {
+            handleFirestoreError(error, OperationType.WRITE, 'settings/global_config');
+          }
         }
         setIsSheetLoading(false);
         return { success: true };
@@ -798,14 +813,16 @@ export default function App() {
         setCharacters(parsedCharacters);
         setSheetUrl(parsedUrl);
         localStorage.setItem('custom_sheet_url', parsedUrl);
-        try {
-          await setDoc(doc(db, 'settings', 'global_config'), {
-            custom_sheet_url: parsedUrl,
-            feedback_email: feedbackEmail,
-            updatedAt: serverTimestamp()
-          });
-        } catch (error) {
-          handleFirestoreError(error, OperationType.WRITE, 'settings/global_config');
+        if (persistToFirestore) {
+          try {
+            await setDoc(doc(db, 'settings', 'global_config'), {
+              custom_sheet_url: parsedUrl,
+              feedback_email: feedbackEmail,
+              updatedAt: serverTimestamp()
+            });
+          } catch (error) {
+            handleFirestoreError(error, OperationType.WRITE, 'settings/global_config');
+          }
         }
         setIsSheetLoading(false);
         return { success: true };
@@ -955,43 +972,39 @@ export default function App() {
     const authorUid = auth.currentUser?.uid || user.guestId;
 
     try {
+      let replyToUsername: string | undefined = undefined;
+      let finalCommentText = text;
+
       if (replyToCommentId) {
         // Find main comment document inside Firestore 'comments' collection
         const docRef = doc(db, 'comments', replyToCommentId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const detail = docSnap.data();
-          const listReplies = detail.replies ? [...detail.replies] : [];
-          
-          const newReply: ReplyComment = {
-            id: 'rep_' + Math.floor(100000 + Math.random() * 900000),
-            userId: authorUid,
-            username: commenterName,
-            text,
-            timestamp: Date.now(),
-            upvotes: 0,
-          };
-          
-          await updateDoc(docRef, {
-            replies: [...listReplies, newReply]
-          });
+          replyToUsername = detail.username;
+          if (replyToUsername && !text.startsWith(`@${replyToUsername}`)) {
+            finalCommentText = `@${replyToUsername} ` + text;
+          }
         }
-      } else {
-        // Place complete new comment document
-        const newDocId = 'com_' + Math.floor(100000 + Math.random() * 900000);
-        const docRef = doc(db, 'comments', newDocId);
-        
-        await setDoc(docRef, {
-          commentId: newDocId,
-          characterId: charId,
-          userId: authorUid,
-          username: commenterName,
-          text,
-          upvotes: 0,
-          timestamp: Date.now(),
-          replies: []
-        });
       }
+
+      // Place complete new comment document
+      const newDocId = 'com_' + Math.floor(100000 + Math.random() * 900000);
+      const docRef = doc(db, 'comments', newDocId);
+      
+      await setDoc(docRef, {
+        commentId: newDocId,
+        characterId: charId,
+        userId: authorUid,
+        username: commenterName,
+        text: finalCommentText,
+        upvotes: 0,
+        downvotes: 0,
+        timestamp: Date.now(),
+        likedBy: [],
+        dislikedBy: [],
+        replyToUsername: replyToUsername || null
+      });
     } catch (error) {
       const pathTarget = replyToCommentId ? `comments/${replyToCommentId}` : 'comments/new';
       handleFirestoreError(error, OperationType.WRITE, pathTarget);
@@ -999,29 +1012,75 @@ export default function App() {
   };
 
   // Real Firestore Upvote increments
-  const handleUpvoteComment = async (charId: string, commentId: string, replyId?: string) => {
+  const handleUpvoteComment = async (charId: string, commentId: string) => {
+    const currentUid = auth.currentUser?.uid || user.guestId;
     try {
       const docRef = doc(db, 'comments', commentId);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const detail = docSnap.data();
-        if (replyId) {
-          // Inside replies list, increment upvotes of matched reply
-          const listReplies = (detail.replies || []).map((r: any) => {
-            if (r.id === replyId) {
-              return { ...r, upvotes: (r.upvotes || 0) + 1 };
-            }
-            return r;
-          });
-          await updateDoc(docRef, {
-            replies: listReplies
-          });
+        let likedBy = detail.likedBy || [];
+        let upvotesCount = detail.upvotes || 0;
+        let dislikedBy = detail.dislikedBy || [];
+        let downvotesCount = detail.downvotes || 0;
+
+        if (likedBy.includes(currentUid)) {
+          likedBy = likedBy.filter((id: string) => id !== currentUid);
+          upvotesCount = Math.max(0, upvotesCount - 1);
         } else {
-          // Increment root comment upvotes
-          await updateDoc(docRef, {
-            upvotes: (detail.upvotes || 0) + 1
-          });
+          likedBy.push(currentUid);
+          upvotesCount += 1;
+          // Remove dislike if present
+          if (dislikedBy.includes(currentUid)) {
+            dislikedBy = dislikedBy.filter((id: string) => id !== currentUid);
+            downvotesCount = Math.max(0, downvotesCount - 1);
+          }
         }
+
+        await updateDoc(docRef, {
+          likedBy,
+          upvotes: upvotesCount,
+          dislikedBy,
+          downvotes: downvotesCount
+        });
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `comments/${commentId}`);
+    }
+  };
+
+  // Real Firestore Downvote increments
+  const handleDownvoteComment = async (charId: string, commentId: string) => {
+    const currentUid = auth.currentUser?.uid || user.guestId;
+    try {
+      const docRef = doc(db, 'comments', commentId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const detail = docSnap.data();
+        let likedBy = detail.likedBy || [];
+        let upvotesCount = detail.upvotes || 0;
+        let dislikedBy = detail.dislikedBy || [];
+        let downvotesCount = detail.downvotes || 0;
+
+        if (dislikedBy.includes(currentUid)) {
+          dislikedBy = dislikedBy.filter((id: string) => id !== currentUid);
+          downvotesCount = Math.max(0, downvotesCount - 1);
+        } else {
+          dislikedBy.push(currentUid);
+          downvotesCount += 1;
+          // Remove like if present
+          if (likedBy.includes(currentUid)) {
+            likedBy = likedBy.filter((id: string) => id !== currentUid);
+            upvotesCount = Math.max(0, upvotesCount - 1);
+          }
+        }
+
+        await updateDoc(docRef, {
+          likedBy,
+          upvotes: upvotesCount,
+          dislikedBy,
+          downvotes: downvotesCount
+        });
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `comments/${commentId}`);
@@ -1217,7 +1276,7 @@ export default function App() {
             stats={stats}
             onNavigateToCommunity={handleNavigateToCommunity}
             onUpdateStats={handleUpdateStats}
-            onCustomSheetLoad={fetchGoogleSheetData}
+            onCustomSheetLoad={(url) => fetchGoogleSheetData(url, !!user.isAdmin)}
             sheetUrl={sheetUrl}
             isSheetLoading={isSheetLoading}
             theme={theme}

@@ -109,25 +109,23 @@ service cloud.firestore {
       allow get: if true;
       allow list: if true; // Public forum listing
       
-      allow create: if isSignedIn()
-        && isValidId(commentId)
+      allow create: if isValidId(commentId)
         && isValidComment(incoming())
         && incoming().commentId == commentId
-        && incoming().userId == request.auth.uid;
+        && (!isSignedIn() || incoming().userId == request.auth.uid);
         
-      allow update: if isSignedIn()
-        && (
+      allow update: if (
           // Action: Upvoting/downvoting a comment, managing replies, liking and disliking comments/replies
           incoming().diff(existing()).affectedKeys().hasOnly(['upvotes', 'downvotes', 'replies', 'likesCount', 'likedBy', 'dislikedBy', 'reported', 'reports', 'parentId', 'replyToUser'])
            ||
-          // Action: Editing own comment text
-          (existing().userId == request.auth.uid
+          // Action: Editing own comment text (only if signed in and is user)
+          (isSignedIn() && existing().userId == request.auth.uid
            && isValidComment(incoming())
            && incoming().commentId == existing().commentId
            && incoming().userId == existing().userId
            && incoming().diff(existing()).affectedKeys().hasOnly(['text', 'replies', 'parentId', 'replyToUser']))
            ||
-          isAdmin()
+          (isSignedIn() && isAdmin())
          );
       
       allow delete: if isSignedIn() && (
@@ -150,11 +148,12 @@ service cloud.firestore {
         && incoming().threadId == threadId
         && incoming().userId == request.auth.uid;
         
-      allow update: if isSignedIn()
-        && (
+      allow update: if (
           // Action: Social feedback (Likes, Dislikes, Poll votes, and comments tracking)
           incoming().diff(existing()).affectedKeys().hasOnly(['upvotes', 'downvotes', 'pollVotes', 'votedUserIds', 'commentsCount', 'engagementScore', 'likedBy', 'dislikedBy', 'reported', 'reports'])
-          ||
+        )
+        ||
+        (isSignedIn() && (
           // Action: Edit content
           ((existing().userId == request.auth.uid || isAdmin())
            && isValidThread(incoming())
@@ -163,7 +162,7 @@ service cloud.firestore {
            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category']))
            ||
           isAdmin()
-        );
+        ));
         
       allow delete: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
     }
