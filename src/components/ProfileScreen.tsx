@@ -9,6 +9,7 @@ import { ShieldAlert, Sparkles, LogIn, LogOut, Edit2, MessageSquare, Flame, Sear
 import { User, UserStats, Comment } from '../types.ts';
 import { PRE_SEEDED_COMMENTS } from '../data.ts';
 import { getLevelProgress } from './PlayScreen.tsx';
+import { getDirectImageUrl } from '../utils.ts';
 
 interface ProfileScreenProps {
   user: User;
@@ -19,6 +20,7 @@ interface ProfileScreenProps {
   onUpdateUsername: (newUsername: string) => Promise<boolean>;
   checkIfUsernameTaken: (usernameToCheck: string, excludeUid: string | null) => Promise<boolean>;
   searchUserByUsername: (username: string) => Promise<{ searchedUser: User; searchedStats: UserStats } | null>;
+  logoUrl?: string;
 }
 
 export default function ProfileScreen({
@@ -29,7 +31,8 @@ export default function ProfileScreen({
   onLogout,
   onUpdateUsername,
   checkIfUsernameTaken,
-  searchUserByUsername
+  searchUserByUsername,
+  logoUrl
 }: ProfileScreenProps) {
   // Tabs inside Profile: 'stats' or 'my-comments'
   const [activeSubTab, setActiveSubTab] = useState<'stats' | 'comments'>('stats');
@@ -649,8 +652,17 @@ export default function ProfileScreen({
               exit={{ scale: 0.95, y: 15 }}
               className="bg-[#17171C] border border-white/10 rounded-2xl p-6 max-w-md w-full relative text-left shadow-2xl shadow-black"
             >
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">🏆</span>
+              <div className="flex items-center gap-2.5 mb-4">
+                {logoUrl ? (
+                  <img 
+                    src={getDirectImageUrl(logoUrl)} 
+                    alt="Logo" 
+                    className="h-8 w-auto max-w-[120px] object-contain rounded"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span className="text-2xl">🏆</span>
+                )}
                 <div>
                   <h3 className="font-display text-lg text-primary font-bold">Secure Your Striker Nickname</h3>
                   <p className="font-sans text-[11px] text-secondary">Define a handle distinct in debate forums</p>

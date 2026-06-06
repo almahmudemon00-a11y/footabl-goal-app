@@ -43,10 +43,12 @@ service cloud.firestore {
 
     function isValidSettings(data) {
       return data.keys().hasAll(['custom_sheet_url'])
-        && data.keys().size() <= 4
+        && data.keys().size() <= 6
         && data.custom_sheet_url is string
         && data.custom_sheet_url.size() <= 1000
         && (!('feedback_email' in data) || (data.feedback_email is string && data.feedback_email.size() <= 254))
+        && (!('favicon_url' in data) || (data.favicon_url is string && data.favicon_url.size() <= 1000))
+        && (!('logo_url' in data) || (data.logo_url is string && data.logo_url.size() <= 1000))
         && (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 

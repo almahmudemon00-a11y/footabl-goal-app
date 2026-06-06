@@ -50,14 +50,14 @@ export interface LevelProgressInfo {
 
 export function getLevelProgress(correctGuesses: number): LevelProgressInfo {
   // Thresholds represent the total correctGuesses required to reach the NEXT level:
-  // Level 1 -> reaches Level 2 at 3
-  // Level 2 -> reaches Level 3 at 10
-  // Level 3 -> reaches Level 4 at 20
-  // Level 4 -> reaches Level 5 at 35
-  const thresholds = [3, 10, 20, 35];
+  // Level 1 -> reaches Level 2 at 5
+  // Level 2 -> reaches Level 3 at 15
+  // Level 3 -> reaches Level 4 at 30
+  // Level 4 -> reaches Level 5 at 50
+  const thresholds = [5, 15, 30, 50];
   
-  let currentVal = 35;
-  let diff = 15;
+  let currentVal = 50;
+  let diff = 20;
   
   // Fill up to 1000 thresholds dynamically
   while (thresholds.length < 1000) {
@@ -936,7 +936,9 @@ export default function PlayScreen({
                     </span>
                     
                     <div className="flex items-center gap-1 md:gap-1.5">
-                      <span className="text-[8px] md:text-base">⚽</span>
+                      <span className="text-[8px] md:text-base">
+                        {activeMode === 'goals' ? '⚽' : activeMode === 'assists' ? '👟' : '🔥'}
+                      </span>
                       <span className={`font-display text-[10px] xs:text-sm md:text-3xl lg:text-4xl font-black bg-gradient-to-r ${leftRarity.color} bg-clip-text text-transparent leading-none select-none tracking-tighter ${leftRarity.textGlow}`}>
                         {leftVal}
                       </span>
@@ -1043,7 +1045,9 @@ export default function PlayScreen({
                             className="flex items-center gap-1 md:gap-2"
                             style={{ backfaceVisibility: 'hidden' }}
                           >
-                            <span className="text-[9px] md:text-xl animate-spin" style={{ animationDuration: '4s' }}>⚽</span>
+                            <span className="text-[9px] md:text-xl animate-spin" style={{ animationDuration: '4s' }}>
+                              {activeMode === 'goals' ? '⚽' : activeMode === 'assists' ? '👟' : '🔥'}
+                            </span>
                             <span className={`font-display text-xs xs:text-base md:text-4xl lg:text-5xl font-black bg-gradient-to-r ${rightRarity.color} bg-clip-text text-transparent leading-none select-none tracking-tighter ${rightRarity.textGlow}`}>
                               {rightVal}
                             </span>

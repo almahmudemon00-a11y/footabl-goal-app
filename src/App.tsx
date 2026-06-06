@@ -9,6 +9,7 @@ import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { Sparkles, Medal, User, Flame, Moon, Sun, MessageSquare, Compass, Settings, CircleDot, Trophy } from 'lucide-react';
 import { Character, Comment, User as UserType, UserStats } from './types.ts';
 import { DEFAULT_CHARACTERS, PRE_SEEDED_COMMENTS } from './data.ts';
+import { getDirectImageUrl } from './utils.ts';
 
 // Firebase integration modules
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
@@ -57,6 +58,25 @@ export default function App() {
   const [feedbackEmail, setFeedbackEmail] = useState<string>(() => {
     return localStorage.getItem('feedback_email') || 'almagdjsg@gmail.com';
   });
+
+  // Corporate branding assets configurations
+  const [faviconUrl, setFaviconUrl] = useState<string>(() => {
+    return localStorage.getItem('favicon_url') || '';
+  });
+  const [logoUrl, setLogoUrl] = useState<string>(() => {
+    return localStorage.getItem('logo_url') || '';
+  });
+
+  // Dynamic Tab Icon (Favicon) configuration
+  useEffect(() => {
+    let faviconLink = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
+    if (!faviconLink) {
+      faviconLink = document.createElement('link');
+      faviconLink.rel = 'icon';
+      document.head.appendChild(faviconLink);
+    }
+    faviconLink.href = getDirectImageUrl(faviconUrl) || '/favicon.ico';
+  }, [faviconUrl]);
 
   // Authenticated user store
   const [user, setUser] = useState<UserType>(() => {
@@ -491,6 +511,22 @@ export default function App() {
         const email = data.feedback_email || 'almagdjsg@gmail.com';
         setFeedbackEmail(email);
         localStorage.setItem('feedback_email', email);
+
+        const fav = data.favicon_url || '';
+        setFaviconUrl(fav);
+        if (fav) {
+          localStorage.setItem('favicon_url', fav);
+        } else {
+          localStorage.removeItem('favicon_url');
+        }
+
+        const logo = data.logo_url || '';
+        setLogoUrl(logo);
+        if (logo) {
+          localStorage.setItem('logo_url', logo);
+        } else {
+          localStorage.removeItem('logo_url');
+        }
       }
     }, (error) => {
       console.error('Settings subscription errored:', error);
@@ -519,8 +555,28 @@ export default function App() {
       await setDoc(doc(db, 'settings', 'global_config'), {
         custom_sheet_url: sheetUrl,
         feedback_email: newEmail,
+        favicon_url: faviconUrl,
+        logo_url: logoUrl,
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'settings/global_config');
+    }
+  };
+
+  const handleUpdateBranding = async (newFavicon: string, newLogo: string) => {
+    setFaviconUrl(newFavicon);
+    setLogoUrl(newLogo);
+    localStorage.setItem('favicon_url', newFavicon);
+    localStorage.setItem('logo_url', newLogo);
+    try {
+      await setDoc(doc(db, 'settings', 'global_config'), {
+        custom_sheet_url: sheetUrl,
+        feedback_email: feedbackEmail,
+        favicon_url: newFavicon,
+        logo_url: newLogo,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/global_config');
     }
@@ -1110,22 +1166,33 @@ export default function App() {
       <header className="fixed top-0 left-0 right-0 z-40 bg-card border-b border-primary-border/60 backdrop-blur-md px-4 md:px-8 h-16 flex items-center justify-between">
         {/* Brand Left */}
         <div className="flex items-center gap-3 text-left">
-          {/* Custom Logo at front */}
-          <div className="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-[#E8472A] to-[#ff6b52] flex items-center justify-center text-white shadow-md shadow-[#E8472A]/20 transform hover:scale-105 transition-transform duration-200">
-            <Trophy className="w-5 h-5 text-white" />
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-card flex items-center justify-center">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            </div>
-          </div>
-          
-          <div className="flex flex-col text-left leading-none">
-            <span className="font-display text-2xl font-black tracking-tighter text-primary select-none">
-              GoalSpire
-            </span>
-            <span className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-1">
-              Play. Debate. Rank up.
-            </span>
-          </div>
+          {logoUrl ? (
+            <img 
+              src={getDirectImageUrl(logoUrl)} 
+              alt="GoalSpire Logo" 
+              className="h-10 w-auto max-w-[160px] object-contain rounded-lg hover:scale-105 transition-transform duration-200" 
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <>
+              {/* Custom Logo at front */}
+              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-[#E8472A] to-[#ff6b52] flex items-center justify-center text-white shadow-md shadow-[#E8472A]/20 transform hover:scale-105 transition-transform duration-200">
+                <Trophy className="w-5 h-5 text-white" />
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-card flex items-center justify-center">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                </div>
+              </div>
+              
+              <div className="flex flex-col text-left leading-none">
+                <span className="font-display text-2xl font-black tracking-tighter text-primary select-none">
+                  GoalSpire
+                </span>
+                <span className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-1">
+                  Play. Debate. Rank up.
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Navigation Middle Tabs (Visible on screens >= md) */}
@@ -1304,6 +1371,7 @@ export default function App() {
             onUpdateUsername={handleUpdateUsername}
             checkIfUsernameTaken={checkIfUsernameTaken}
             searchUserByUsername={searchUserByUsername}
+            logoUrl={logoUrl}
           />
         )}
 
@@ -1314,6 +1382,9 @@ export default function App() {
             user={user}
             feedbackEmail={feedbackEmail}
             onUpdateFeedbackEmail={handleUpdateFeedbackEmail}
+            faviconUrl={faviconUrl}
+            logoUrl={logoUrl}
+            onUpdateBranding={handleUpdateBranding}
           />
         )}
       </main>
