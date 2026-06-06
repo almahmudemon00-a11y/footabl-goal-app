@@ -70,8 +70,8 @@ export default function CommunityScreen({
   const isGuest = user.isGuest;
 
   // Active navigation
-  // 'feed' | 'admin' | 'my-posts'
-  const [activeSection, setActiveSection] = useState<'feed' | 'admin' | 'my-posts'>('feed');
+  // 'feed' | 'admin' | 'my-posts' | 'event'
+  const [activeSection, setActiveSection] = useState<'feed' | 'admin' | 'my-posts' | 'event'>('feed');
   
   // Admin panel subtabs
   const [adminTab, setAdminTab] = useState<'reports' | 'users' | 'categories'>('reports');
@@ -1189,6 +1189,19 @@ export default function CommunityScreen({
             </button>
           )}
 
+          <button
+            onClick={() => setActiveSection('event')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 relative overflow-hidden ${
+              activeSection === 'event'
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-350 shadow-md !text-zinc-950'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5 text-[#E8472A] fill-[#E8472A]/10" />
+            <span>Event</span>
+            <span className="text-[7px] font-mono bg-[#E8472A]/15 text-amber-500 px-1 py-0.5 rounded border border-[#E8472A]/20">SOON</span>
+          </button>
+
           {isUserModerator && (
             <button
               onClick={() => setActiveSection('admin')}
@@ -1225,7 +1238,7 @@ export default function CommunityScreen({
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         
         {/* FEED FILTERS LEFT COLUMN */}
-        {activeSection !== 'admin' && (
+        {activeSection !== 'admin' && activeSection !== 'event' && (
           <>
             {/* Mobile Filter Toggle Header Button */}
             <button
@@ -1500,7 +1513,7 @@ export default function CommunityScreen({
       )}
 
         {/* FEED CONTENT COLUMN or ADMIN CONTROL TABS PANEL */}
-        <div className={activeSection === 'admin' ? 'lg:col-span-4' : 'lg:col-span-3'}>
+        <div className={activeSection === 'admin' || activeSection === 'event' ? 'lg:col-span-4' : 'lg:col-span-3'}>
 
           {isLoading ? (
             /* Sleek Loading Skeleton cards */
@@ -1787,6 +1800,108 @@ export default function CommunityScreen({
                 </div>
               )}
 
+            </div>
+
+          ) : activeSection === 'event' ? (
+            
+            /* ========================================================
+               EVENT PANEL - COMING SOON
+               ======================================================== */
+            <div className="flex flex-col gap-6 text-left">
+              <div className="bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 border border-white/5 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl">
+                {/* Glowing cosmic ambient circle background */}
+                <div className="absolute right-0 top-0 w-80 h-80 bg-[#E8472A]/10 blur-3.5xl pointer-events-none rounded-full" />
+                <div className="absolute left-1/4 bottom-0 w-60 h-60 bg-amber-500/5 blur-3xl pointer-events-none rounded-full" />
+                
+                <div className="relative z-10 space-y-6">
+                  {/* Event badge header */}
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="bg-[#E8472A]/10 text-[#E8472A]/90 border border-[#E8472A]/20 px-3.5 py-1 rounded-full text-[9px] font-mono font-black uppercase tracking-widest flex items-center gap-1.5 shadow-md">
+                      <Flame className="w-3.5 h-3.5 text-[#E8472A] fill-[#E8472A]/20 animate-pulse" />
+                      Community Event
+                    </span>
+                    <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-3.5 py-1 rounded-full text-[9px] font-mono font-black uppercase tracking-widest animate-pulse">
+                      • Coming Soon
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <div className="space-y-2">
+                    <h2 className="font-display text-2xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-zinc-50 via-zinc-200 to-zinc-400 tracking-tight leading-tight uppercase flex items-center gap-2">
+                      <Award className="w-8 h-8 text-amber-500 shrink-0 inline-block align-middle" />
+                      <span>Community Championship</span>
+                    </h2>
+                    <p className="font-sans text-xs md:text-sm text-zinc-400 max-w-2xl leading-relaxed">
+                      Establish your legacy in the ultimate football trivia battlefield. Compare metrics, climb ranks on real-time community challenges, and secure exclusive legendary awards.
+                    </p>
+                  </div>
+
+                  {/* Feature Highlights Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                    <div className="p-5 bg-zinc-950/50 border border-white/5 rounded-2xl flex flex-col justify-between hover:border-amber-500/20 transition-all duration-300">
+                      <div>
+                        <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-bold mb-3 font-mono">
+                          1
+                        </div>
+                        <h4 className="font-sans font-black text-xs text-zinc-200 uppercase tracking-wider mb-1">
+                          1v1 Brackets Match-ups
+                        </h4>
+                        <p className="text-[10px] text-zinc-400 leading-relaxed">
+                          Compete side-by-side with other community users in custom tournament rooms with specific draft requirements.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-5 bg-zinc-950/50 border border-white/5 rounded-2xl flex flex-col justify-between hover:border-[#E8472A]/20 transition-all duration-300">
+                      <div>
+                        <div className="w-8 h-8 rounded-xl bg-[#E8472A]/10 border border-[#E8472A]/20 flex items-center justify-center text-[#E8472A] font-bold mb-3 font-mono">
+                          2
+                        </div>
+                        <h4 className="font-sans font-black text-xs text-zinc-200 uppercase tracking-wider mb-1">
+                          Global Arena Leaderboards
+                        </h4>
+                        <p className="text-[10px] text-zinc-400 leading-relaxed">
+                          Amass Championship points, extend your ultimate streak, and prove who possesses the ultimate stats knowledge.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-5 bg-zinc-950/50 border border-white/5 rounded-2xl flex flex-col justify-between hover:border-amber-500/20 transition-all duration-300">
+                      <div>
+                        <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-bold mb-3 font-mono">
+                          3
+                        </div>
+                        <h4 className="font-sans font-black text-xs text-zinc-200 uppercase tracking-wider mb-1">
+                          Exclusive Badges
+                        </h4>
+                        <p className="text-[10px] text-zinc-400 leading-relaxed">
+                          Earn high-reputation flairs and special ranking titles that dynamically attach to your posts and comments.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Teaser Footer banner */}
+                  <div className="p-4 bg-zinc-950/80 border border-white/5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-r from-amber-500/10 to-[#E8472A]/15 border border-amber-500/10 rounded-lg">
+                        <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
+                      </div>
+                      <div className="text-left">
+                        <span className="font-sans font-black text-[10px] text-zinc-300 block uppercase tracking-wide">Ready for kickoff?</span>
+                        <span className="text-[9px] text-zinc-500 font-mono">Championship series opens soon. Join existing rooms on the feed to practice!</span>
+                      </div>
+                    </div>
+                    <button
+                      disabled
+                      className="px-5 py-2 rounded-xl bg-zinc-900 border border-white/10 text-zinc-500 text-[10px] font-black uppercase tracking-wider cursor-not-allowed select-none"
+                    >
+                      Locked Phase
+                    </button>
+                  </div>
+
+                </div>
+              </div>
             </div>
 
           ) : (

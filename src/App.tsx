@@ -10,6 +10,7 @@ import { Sparkles, Medal, User, Flame, Moon, Sun, MessageSquare, Compass, Settin
 import { Character, Comment, User as UserType, UserStats } from './types.ts';
 import { DEFAULT_CHARACTERS, PRE_SEEDED_COMMENTS } from './data.ts';
 import { getDirectImageUrl } from './utils.ts';
+import { playClickSound } from './utils/sound.ts';
 
 // Firebase integration modules
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
@@ -140,6 +141,17 @@ export default function App() {
 
   // Keep streak active across tabs
   const [streak, setStreak] = useState<number>(0);
+
+  // Sound system volume state, saved in localStorage
+  const [soundVolume, setSoundVolume] = useState<number>(() => {
+    const saved = localStorage.getItem('sound_volume');
+    return saved !== null ? parseFloat(saved) : 0.5;
+  });
+
+  const handleSoundVolumeChange = (vol: number) => {
+    setSoundVolume(vol);
+    localStorage.setItem('sound_volume', vol.toString());
+  };
 
   // Live Comments debate index
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
@@ -1163,6 +1175,7 @@ export default function App() {
           <button
             id="tab_play"
             onClick={() => {
+              playClickSound(soundVolume);
               setActiveTab('play');
               setCommunityExpandTargetCharId(undefined);
             }}
@@ -1177,7 +1190,10 @@ export default function App() {
 
           <button
             id="tab_community"
-            onClick={() => setActiveTab('community')}
+            onClick={() => {
+              playClickSound(soundVolume);
+              setActiveTab('community');
+            }}
             className={`relative py-5 font-sans font-extrabold text-xs tracking-widest uppercase transition-all ${
               activeTab === 'community'
                 ? 'text-primary border-b-2 border-[#E8472A]'
@@ -1190,6 +1206,7 @@ export default function App() {
           <button
             id="tab_profile"
             onClick={() => {
+              playClickSound(soundVolume);
               setActiveTab('profile');
               setCommunityExpandTargetCharId(undefined);
             }}
@@ -1245,6 +1262,7 @@ export default function App() {
       <nav className="fixed md:hidden bottom-0 left-0 right-0 h-16 bg-zinc-950/95 border-t border-white/10 backdrop-blur-md px-6 flex items-center justify-around z-40 shadow-[0_-8px_30px_rgb(0,0,0,0.5)]">
         <button
           onClick={() => {
+            playClickSound(soundVolume);
             setActiveTab('play');
             setCommunityExpandTargetCharId(undefined);
           }}
@@ -1262,7 +1280,10 @@ export default function App() {
         </button>
 
         <button
-          onClick={() => setActiveTab('community')}
+          onClick={() => {
+            playClickSound(soundVolume);
+            setActiveTab('community');
+          }}
           className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-250 relative ${
             activeTab === 'community' 
               ? 'text-[#E8472A] bg-[#E8472A]/10 font-bold scale-105 shadow-[inset_0_1px_2px_rgba(232,71,42,0.1)]' 
@@ -1278,6 +1299,7 @@ export default function App() {
 
         <button
           onClick={() => {
+            playClickSound(soundVolume);
             setActiveTab('profile');
             setCommunityExpandTargetCharId(undefined);
           }}
@@ -1306,6 +1328,7 @@ export default function App() {
             stats={stats}
             streak={streak}
             setStreak={setStreak}
+            soundVolume={soundVolume}
             onNavigateToCommunity={handleNavigateToCommunity}
             onUpdateStats={handleUpdateStats}
             onCustomSheetLoad={(url) => fetchGoogleSheetData(url, !!user.isAdmin)}
@@ -1343,10 +1366,15 @@ export default function App() {
         {activeTab === 'settings' && (
           <SettingsScreen
             theme={theme}
-            onThemeToggle={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            onThemeToggle={() => {
+              playClickSound(soundVolume);
+              setTheme(theme === 'dark' ? 'light' : 'dark');
+            }}
             user={user}
             feedbackEmail={feedbackEmail}
             onUpdateFeedbackEmail={handleUpdateFeedbackEmail}
+            soundVolume={soundVolume}
+            onSoundVolumeChange={handleSoundVolumeChange}
           />
         )}
       </main>

@@ -8,9 +8,12 @@ import {
   X,
   Save,
   Trophy,
-  Edit
+  Edit,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { User } from '../types.ts';
+import { playClickSound } from '../utils/sound.ts';
 
 interface SettingsScreenProps {
   theme: 'light' | 'dark';
@@ -18,6 +21,8 @@ interface SettingsScreenProps {
   user: User;
   feedbackEmail: string;
   onUpdateFeedbackEmail: (email: string) => Promise<void>;
+  soundVolume: number;
+  onSoundVolumeChange: (vol: number) => void;
 }
 
 export default function SettingsScreen({
@@ -25,7 +30,9 @@ export default function SettingsScreen({
   onThemeToggle,
   user,
   feedbackEmail,
-  onUpdateFeedbackEmail
+  onUpdateFeedbackEmail,
+  soundVolume,
+  onSoundVolumeChange
 }: SettingsScreenProps) {
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -89,6 +96,95 @@ export default function SettingsScreen({
               )}
             </span>
           </button>
+        </div>
+
+        {/* Sound Preferences Section */}
+        <div className="p-5 rounded-2xl bg-secondary-surface/40 border border-primary-border/40 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="font-sans font-bold text-sm text-primary block">
+                Sound Effects
+              </span>
+              <span className="font-sans text-[11px] text-secondary">
+                Toggle and adjust clicks and level up chimes
+              </span>
+            </div>
+
+            <button
+              onClick={() => {
+                const nextVol = soundVolume > 0 ? 0 : 0.5;
+                onSoundVolumeChange(nextVol);
+                if (nextVol > 0) {
+                  playClickSound(nextVol);
+                }
+              }}
+              className={`p-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
+                soundVolume > 0
+                  ? 'bg-[#E8472A]/10 text-[#E8472A] border-[#E8472A]/35 hover:bg-[#E8472A]/20'
+                  : 'bg-zinc-805 text-zinc-500 border-zinc-700/50 hover:bg-zinc-800/60'
+              }`}
+              title={soundVolume > 0 ? 'Mute' : 'Unmute'}
+            >
+              {soundVolume > 0 ? (
+                <Volume2 className="w-4 h-4 text-[#E8472A]" />
+              ) : (
+                <VolumeX className="w-4 h-4 text-zinc-500" />
+              )}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-4 bg-zinc-950/40 border border-primary-border/20 p-3.5 rounded-xl">
+            <span className="font-mono text-[10px] text-zinc-500 w-8 shrink-0">
+              {Math.round(soundVolume * 100)}%
+            </span>
+            
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={soundVolume}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                onSoundVolumeChange(val);
+              }}
+              onMouseUp={() => {
+                if (soundVolume > 0) {
+                  playClickSound(soundVolume);
+                }
+              }}
+              onTouchEnd={() => {
+                if (soundVolume > 0) {
+                  playClickSound(soundVolume);
+                }
+              }}
+              className="flex-1 accent-[#E8472A] cursor-ew-resize opacity-90 hover:opacity-100 transition-opacity bg-zinc-800 h-1.5 rounded-lg appearance-none"
+            />
+            
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => {
+                  const nextVol = Math.max(0, parseFloat((soundVolume - 0.1).toFixed(2)));
+                  onSoundVolumeChange(nextVol);
+                  if (nextVol > 0) playClickSound(nextVol);
+                }}
+                className="px-2 py-1 bg-zinc-800/40 text-xs font-bold rounded-lg hover:bg-zinc-800 text-zinc-300 border border-zinc-700/50 active:scale-95 transition-all outline-none cursor-pointer"
+              >
+                -
+              </button>
+              <button
+                onClick={() => {
+                  const nextVol = Math.sin(Math.min(1, parseFloat((soundVolume + 0.1).toFixed(2))));
+                  const exactNext = Math.min(1, parseFloat((soundVolume + 0.1).toFixed(2)));
+                  onSoundVolumeChange(exactNext);
+                  if (exactNext > 0) playClickSound(exactNext);
+                }}
+                className="px-2 py-1 bg-zinc-800/40 text-xs font-bold rounded-lg hover:bg-zinc-800 text-zinc-300 border border-zinc-700/50 active:scale-95 transition-all outline-none cursor-pointer"
+              >
+                +
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Feedback Section */}

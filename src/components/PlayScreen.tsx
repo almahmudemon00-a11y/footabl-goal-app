@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Flame, Trophy, Check, X, RotateCcw, Share2, MessageSquare, AlertCircle, FileText, Sparkles, ArrowUp, ArrowDown, Shield } from 'lucide-react';
 import { Character, Comment, User, UserStats } from '../types.ts';
 import { UNIVERSE_COLORS, PRE_SEEDED_COMMENTS } from '../data.ts';
+import { playClickSound, playLevelUpSound } from '../utils/sound.ts';
 
 const getCountryFlagEmoji = (countryName: string): string => {
   if (!countryName) return '🏳️';
@@ -213,6 +214,7 @@ interface PlayScreenProps {
   stats: UserStats;
   streak: number;
   setStreak: (s: number) => void;
+  soundVolume: number;
   onNavigateToCommunity: (charId?: string) => void;
   onUpdateStats: (correct: boolean, nextStreak?: number, mode?: 'goals' | 'assists' | 'gAndA') => void;
   onCustomSheetLoad: (url: string) => Promise<{ success: boolean; error?: string }>;
@@ -229,6 +231,7 @@ export default function PlayScreen({
   stats,
   streak,
   setStreak,
+  soundVolume,
   onNavigateToCommunity,
   onUpdateStats,
   onCustomSheetLoad,
@@ -296,6 +299,7 @@ export default function PlayScreen({
 
   useEffect(() => {
     if (levelProgress.level > prevLevelRef.current) {
+      playLevelUpSound(soundVolume);
       setShowLevelUpAlert(true);
       const timer = setTimeout(() => {
         setShowLevelUpAlert(false);
@@ -303,7 +307,7 @@ export default function PlayScreen({
       return () => clearTimeout(timer);
     }
     prevLevelRef.current = levelProgress.level;
-  }, [levelProgress.level]);
+  }, [levelProgress.level, soundVolume]);
 
   // Helper metric getter
   const getMetricValue = (char: Character, mode: 'goals' | 'assists' | 'gAndA'): number => {
@@ -426,6 +430,7 @@ export default function PlayScreen({
   const handleGuess = (choice: 'higher' | 'lower') => {
     if (!leftChar || !rightChar || isRevealed) return;
     
+    playClickSound(soundVolume);
     setUserChoice(choice);
     setIsRevealed(true);
     
@@ -469,6 +474,7 @@ export default function PlayScreen({
   const handleNextRound = () => {
     if (!rightChar) return;
     
+    playClickSound(soundVolume);
     const rightVal = getMetricValue(rightChar, activeMode);
     let resolvedLeft: Character;
     if (rightVal > 0) {
@@ -531,6 +537,7 @@ export default function PlayScreen({
   };
 
   const handlePlayAgain = () => {
+    playClickSound(soundVolume);
     setStreak(0);
     setSessionPairings([]);
     initGame(filteredPool);
@@ -737,6 +744,7 @@ export default function PlayScreen({
           <button
             id="game_mode_goals"
             onClick={() => {
+              playClickSound(soundVolume);
               setActiveMode('goals');
               setSelectedCountry('All');
               setSelectedClub('All');
@@ -754,6 +762,7 @@ export default function PlayScreen({
           <button
             id="game_mode_assists"
             onClick={() => {
+              playClickSound(soundVolume);
               setActiveMode('assists');
               setSelectedCountry('All');
               setSelectedClub('All');
@@ -771,6 +780,7 @@ export default function PlayScreen({
           <button
             id="game_mode_gAndA"
             onClick={() => {
+              playClickSound(soundVolume);
               setActiveMode('gAndA');
               setSelectedCountry('All');
               setSelectedClub('All');
