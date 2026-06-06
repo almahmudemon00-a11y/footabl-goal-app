@@ -211,6 +211,8 @@ interface PlayScreenProps {
   user: User;
   bestStreak: number;
   stats: UserStats;
+  streak: number;
+  setStreak: (s: number) => void;
   onNavigateToCommunity: (charId?: string) => void;
   onUpdateStats: (correct: boolean, nextStreak?: number, mode?: 'goals' | 'assists' | 'gAndA') => void;
   onCustomSheetLoad: (url: string) => Promise<{ success: boolean; error?: string }>;
@@ -225,6 +227,8 @@ export default function PlayScreen({
   user,
   bestStreak,
   stats,
+  streak,
+  setStreak,
   onNavigateToCommunity,
   onUpdateStats,
   onCustomSheetLoad,
@@ -274,7 +278,6 @@ export default function PlayScreen({
   const [userChoice, setUserChoice] = useState<'higher' | 'lower' | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [showNextBtn, setShowNextBtn] = useState<boolean>(false);
-  const [streak, setStreak] = useState<number>(0);
   
   // Flash feedback and ending flows
   const [flashColor, setFlashColor] = useState<'green' | 'red' | null>(null);

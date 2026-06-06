@@ -60,12 +60,8 @@ export default function App() {
   });
 
   // Corporate branding assets configurations
-  const [faviconUrl, setFaviconUrl] = useState<string>(() => {
-    return localStorage.getItem('favicon_url') || '';
-  });
-  const [logoUrl, setLogoUrl] = useState<string>(() => {
-    return localStorage.getItem('logo_url') || '';
-  });
+  const [faviconUrl] = useState<string>('');
+  const [logoUrl] = useState<string>('');
 
   // Dynamic Tab Icon (Favicon) configuration
   useEffect(() => {
@@ -141,6 +137,9 @@ export default function App() {
       favoriteUniverse: fav,
     };
   });
+
+  // Keep streak active across tabs
+  const [streak, setStreak] = useState<number>(0);
 
   // Live Comments debate index
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
@@ -511,22 +510,6 @@ export default function App() {
         const email = data.feedback_email || 'almagdjsg@gmail.com';
         setFeedbackEmail(email);
         localStorage.setItem('feedback_email', email);
-
-        const fav = data.favicon_url || '';
-        setFaviconUrl(fav);
-        if (fav) {
-          localStorage.setItem('favicon_url', fav);
-        } else {
-          localStorage.removeItem('favicon_url');
-        }
-
-        const logo = data.logo_url || '';
-        setLogoUrl(logo);
-        if (logo) {
-          localStorage.setItem('logo_url', logo);
-        } else {
-          localStorage.removeItem('logo_url');
-        }
       }
     }, (error) => {
       console.error('Settings subscription errored:', error);
@@ -555,26 +538,6 @@ export default function App() {
       await setDoc(doc(db, 'settings', 'global_config'), {
         custom_sheet_url: sheetUrl,
         feedback_email: newEmail,
-        favicon_url: faviconUrl,
-        logo_url: logoUrl,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'settings/global_config');
-    }
-  };
-
-  const handleUpdateBranding = async (newFavicon: string, newLogo: string) => {
-    setFaviconUrl(newFavicon);
-    setLogoUrl(newLogo);
-    localStorage.setItem('favicon_url', newFavicon);
-    localStorage.setItem('logo_url', newLogo);
-    try {
-      await setDoc(doc(db, 'settings', 'global_config'), {
-        custom_sheet_url: sheetUrl,
-        feedback_email: feedbackEmail,
-        favicon_url: newFavicon,
-        logo_url: newLogo,
         updatedAt: serverTimestamp()
       }, { merge: true });
     } catch (error) {
@@ -1341,6 +1304,8 @@ export default function App() {
             user={user}
             bestStreak={stats.bestStreak}
             stats={stats}
+            streak={streak}
+            setStreak={setStreak}
             onNavigateToCommunity={handleNavigateToCommunity}
             onUpdateStats={handleUpdateStats}
             onCustomSheetLoad={(url) => fetchGoogleSheetData(url, !!user.isAdmin)}
@@ -1382,9 +1347,6 @@ export default function App() {
             user={user}
             feedbackEmail={feedbackEmail}
             onUpdateFeedbackEmail={handleUpdateFeedbackEmail}
-            faviconUrl={faviconUrl}
-            logoUrl={logoUrl}
-            onUpdateBranding={handleUpdateBranding}
           />
         )}
       </main>
