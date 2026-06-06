@@ -109,6 +109,7 @@ export default function CommunityScreen({
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState<boolean>(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
 
   // Filtered categories lists for internal drop search
   const filteredCategoriesList = useMemo(() => {
@@ -2239,68 +2240,95 @@ export default function CommunityScreen({
               </div>
 
               {/* Pinned Debate Context Card - ALWAYS visible at the top */}
-              <div className="shrink-0 bg-gradient-to-b from-[#101015] to-[#060609] border-b border-zinc-900/90 p-5 md:p-6 flex flex-col gap-4 shadow-xl shadow-black/20">
+              <div className={`shrink-0 bg-gradient-to-b from-[#101015] to-[#060609] border-b border-zinc-900/95 transition-all duration-300 ${
+                isScrolled 
+                  ? 'p-3 md:p-3.5 shadow-md' 
+                  : 'p-5 md:p-6 shadow-xl shadow-black/25'
+              }`}>
                 {/* Metadata row */}
-                <div className="flex items-center gap-2 flex-wrap text-xs">
-                  <span className="bg-amber-500/10 border border-amber-500/15 text-[#ffa83e] text-[9px] font-black px-2 py-0.5 rounded tracking-wider uppercase">
-                    {selectedPost.category}
-                  </span>
-                  <span className="text-zinc-700 font-bold">•</span>
-                  <span className="text-zinc-500 text-[10px]">Initiated by</span>
-                  <span className="font-extrabold text-[#ffa03f]">@{selectedPost.username}</span>
-                  <span className={`text-[8px] px-1.5 py-0.5 rounded-md border tracking-wide font-extrabold uppercase ${getUserMeta(selectedPost.userId).color} ${getUserMeta(selectedPost.userId).bg}`}>
-                    {getUserMeta(selectedPost.userId).rank}
-                  </span>
-                  <span className="ml-auto text-zinc-500 font-mono text-[10px]">
-                    {new Date(selectedPost.timestamp).toLocaleDateString()}
-                  </span>
-                </div>
-                
-                {/* Title */}
-                <h1 className="text-base md:text-lg font-black text-zinc-50 tracking-tight leading-snug">
-                  {selectedPost.title}
-                </h1>
-                
-                {/* Scrollable description box under height limits */}
-                {selectedPost.description && (
-                  <div className="max-h-24 overflow-y-auto pr-2 font-sans text-xs text-zinc-300 leading-relaxed bg-zinc-950/50 border border-zinc-900 p-3 rounded-xl whitespace-pre-wrap">
-                    {selectedPost.description}
+                {!isScrolled && (
+                  <div className="flex items-center gap-2 flex-wrap text-xs mb-3">
+                    <span className="bg-amber-500/10 border border-amber-500/15 text-[#ffa83e] text-[9px] font-black px-2 py-0.5 rounded tracking-wider uppercase">
+                      {selectedPost.category}
+                    </span>
+                    <span className="text-zinc-700 font-bold">•</span>
+                    <span className="text-zinc-500 text-[10px]">Initiated by</span>
+                    <span className="font-extrabold text-[#ffa03f]">@{selectedPost.username}</span>
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded-md border tracking-wide font-extrabold uppercase ${getUserMeta(selectedPost.userId).color} ${getUserMeta(selectedPost.userId).bg}`}>
+                      {getUserMeta(selectedPost.userId).rank}
+                    </span>
+                    <span className="ml-auto text-zinc-550 font-mono text-[10px]">
+                      {new Date(selectedPost.timestamp).toLocaleDateString()}
+                    </span>
                   </div>
                 )}
                 
-                {/* Interactive stats totals row */}
-                <div className="flex items-center gap-2.5 text-xs text-zinc-500 flex-wrap">
-                  <span className="bg-zinc-900/60 px-3 py-1.5 rounded-full border border-zinc-850/80 flex items-center gap-1 font-mono text-[10px]">
-                    👍 <span className="text-zinc-300 font-bold">{selectedPost.likedBy?.length || selectedPost.upvotes || 0}</span>
-                  </span>
-                  <span className="bg-zinc-900/60 px-3 py-1.5 rounded-full border border-zinc-850/80 flex items-center gap-1 font-mono text-[10px]">
-                    👎 <span className="text-zinc-300 font-bold">{selectedPost.dislikedBy?.length || selectedPost.downvotes || 0}</span>
-                  </span>
-                  <span className="bg-zinc-900/60 px-3 py-1.5 rounded-full border border-zinc-850/85 flex items-center gap-1.5 font-mono text-[10px] text-amber-400 font-extrabold">
-                    <MessageSquare className="w-3 h-3 text-amber-500" />
-                    <span>{selectedPost.commentsCount || 0} discussions</span>
-                  </span>
+                {/* Title and stats container */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-4">
+                    <h1 className={`font-black text-zinc-50 tracking-tight leading-snug transition-all duration-300 ${
+                      isScrolled ? 'text-xs md:text-sm line-clamp-1' : 'text-base md:text-lg'
+                    }`}>
+                      {selectedPost.title}
+                    </h1>
+                    {isScrolled && (
+                      <span className="shrink-0 bg-amber-500/10 border border-amber-500/15 text-[#ffa83e] text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                        {selectedPost.category}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Scrollable description box under height limits */}
+                  {!isScrolled && selectedPost.description && (
+                    <div className="max-h-24 overflow-y-auto pr-2 font-sans text-xs text-zinc-350 leading-relaxed bg-zinc-950/50 border border-zinc-900 p-3 rounded-xl whitespace-pre-wrap mt-1">
+                      {selectedPost.description}
+                    </div>
+                  )}
+                  
+                  {/* Interactive stats totals row */}
+                  <div className={`flex items-center gap-2 text-xs text-zinc-500 flex-wrap ${isScrolled ? 'mt-0.5' : 'mt-2'}`}>
+                    <span className="bg-zinc-900/60 px-2 py-1 rounded-full border border-zinc-850/80 flex items-center gap-1 font-mono text-[9px]">
+                      👍 <span className="text-zinc-300 font-bold">{selectedPost.likedBy?.length || selectedPost.upvotes || 0}</span>
+                    </span>
+                    <span className="bg-zinc-900/60 px-2 py-1 rounded-full border border-zinc-850/80 flex items-center gap-1 font-mono text-[9px]">
+                      👎 <span className="text-zinc-300 font-bold">{selectedPost.dislikedBy?.length || selectedPost.downvotes || 0}</span>
+                    </span>
+                    <span className="bg-zinc-900/60 px-2 py-1 rounded-full border border-zinc-850/85 flex items-center gap-1 font-mono text-[9px] text-amber-400 font-extrabold ml-1">
+                      <MessageSquare className="w-2.5 h-2.5 text-amber-500" />
+                      <span>{selectedPost.commentsCount || 0} discussions</span>
+                    </span>
+                    {isScrolled && (
+                      <span className="ml-auto text-[9px] text-zinc-500">
+                        by @{selectedPost.username}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Scrollable Comments Area below pinned context */}
-              <div className="flex-1 overflow-y-auto p-5 md:p-6 flex flex-col gap-6">
+              <div 
+                onScroll={(e) => {
+                  setIsScrolled(e.currentTarget.scrollTop > 40);
+                }}
+                className="flex-1 overflow-y-auto p-5 md:p-6 flex flex-col gap-6"
+              >
 
                 {/* FLAT CHRONOLOGICAL COMMENTS FEED */}
                 <div className="flex flex-col gap-4">
-                  <div className="flex items-center gap-2 border-b border-zinc-900 pb-2.5 font-bold text-xs uppercase tracking-wider text-zinc-400">
-                    <MessageSquare className="w-4 h-4 text-amber-500" /> 
+                  <div className="flex items-center gap-2 border-b border-zinc-900/80 pb-2.5 font-bold text-xs uppercase tracking-wider text-zinc-400">
+                    <MessageSquare className="w-3.5 h-3.5 text-amber-500" /> 
                     <span>Live Discussion Feed</span>
                   </div>
 
                   {/* Render comments flat ordered by timestamp ascending */}
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-6">
                     {(() => {
                       const postComments = allComments.filter(
                         c => c.postId === selectedPost.threadId || c.characterId === selectedPost.threadId
                       );
                       if (postComments.length === 0) {
-                        return <p className="text-zinc-650 text-xs pl-1">No comments posted yet. Start the discussion!</p>;
+                        return <p className="text-zinc-600 text-xs pl-1">No comments posted yet. Start the discussion!</p>;
                       }
                       return postComments.map((comment) => {
                         const isOwner = comment.userId === myUid;
@@ -2310,151 +2338,183 @@ export default function CommunityScreen({
 
                         // Calculate badges dynamically
                         const authorMeta = getUserMeta(comment.userId);
+                        const isReply = !!comment.replyToUsername;
 
                         return (
                           <div 
                             key={comment.id}
-                            className={`p-4 rounded-xl border transition-all text-left flex flex-col gap-3 relative ${
-                              comment.reported 
-                                ? 'border-rose-500/40 bg-rose-950/15 text-rose-300' 
-                                : 'border-zinc-900/60 bg-zinc-900/30 hover:border-zinc-800'
-                            }`}
+                            className={`flex gap-3 text-left relative group ${isReply ? 'pl-8 md:pl-10 ml-2' : ''}`}
                           >
-                            <div className="flex justify-between items-start flex-wrap gap-2 text-xs">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-extrabold text-[#ffa03f]">@{comment.username}</span>
-                                
-                                <span className={`text-[8px] px-1.5 py-0.5 rounded-md border tracking-wider font-extrabold uppercase ${authorMeta.color} ${authorMeta.bg}`}>
-                                  {authorMeta.rank}
-                                </span>
+                            {/* Curved link thread line like Facebook comments! */}
+                            {isReply && (
+                              <div className="absolute -left-3 top-0 bottom-6 w-5 border-l border-b border-zinc-800 rounded-bl-xl pointer-events-none opacity-50" />
+                            )}
 
-                                {comment.replyToUsername && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/5 border border-amber-500/10 text-amber-400 text-[8px] font-black rounded uppercase tracking-wider">
-                                    ↳ replying to @{comment.replyToUsername}
+                            {/* User avatar on Left */}
+                            <div className={`rounded-full bg-[#16161c] border border-zinc-800 flex items-center justify-center font-black text-amber-500 shrink-0 shadow-inner select-none ${
+                              isReply ? 'w-7 h-7 text-[9px]' : 'w-9 h-9 text-xs'
+                            }`}>
+                              {comment.username?.slice(0, 2).toUpperCase() || 'FC'}
+                            </div>
+
+                            {/* Right bubble container */}
+                            <div className="flex-1 flex flex-col items-start min-w-0">
+                              {/* Unified speech bubble */}
+                              <div className={`p-3 px-4 rounded-2xl relative ${
+                                comment.reported 
+                                  ? 'border border-rose-500/30 bg-rose-950/15 text-rose-300' 
+                                  : 'bg-zinc-900/60 hover:bg-zinc-900/80 text-zinc-150 transition-all duration-150'
+                              } w-auto max-w-full shadow-sm`}>
+                                {/* Header username / rank line */}
+                                <div className="flex items-center gap-2 flex-wrap text-xs mb-1 select-none">
+                                  <span className="font-extrabold text-[#ffa03f]">@{comment.username}</span>
+                                  <span className={`text-[7.5px] px-1 py-0.2 rounded font-extrabold uppercase ${authorMeta.color} ${authorMeta.bg_border || authorMeta.bg}`}>
+                                    {authorMeta.rank}
                                   </span>
+                                  {isReply && (
+                                    <span className="text-[10px] text-zinc-550 lowercase">
+                                      rep @{comment.replyToUsername}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Main Text/Box body inside bubble */}
+                                {showInlineEdit ? (
+                                  <div className="flex flex-col gap-2 mt-1 w-64 md:w-80">
+                                    <textarea
+                                      value={editingCommentText}
+                                      onChange={(e) => setEditingCommentText(e.target.value)}
+                                      className="w-full text-zinc-150 text-xs bg-zinc-950 border border-amber-500/30 rounded-xl p-3 focus:outline-none focus:border-amber-500 font-sans"
+                                      rows={2}
+                                      maxLength={1500}
+                                    />
+                                    <div className="flex justify-end gap-1.5 text-[10px]">
+                                      <button 
+                                        onClick={() => setEditingCommentId(null)}
+                                        className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 hover:text-zinc-300 text-zinc-400 font-semibold transition"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button 
+                                        onClick={() => handleSaveCommentEdit(comment.id)}
+                                        className="px-3 py-1.5 rounded-xl bg-amber-500 text-zinc-950 font-extrabold hover:bg-amber-600 transition"
+                                      >
+                                        Save
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-zinc-200 text-xs md:text-sm font-sans leading-relaxed break-words whitespace-pre-wrap pl-0.5">
+                                    {comment.text}
+                                  </p>
+                                )}
+
+                                {/* Reaction Pill Overlay at bottom right (Facebook comments style!) */}
+                                {((comment.upvotes || 0) > 0 || (comment.downvotes || 0) > 0) && (
+                                  <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-850 px-1.5 py-0.5 rounded-full text-[9px] font-mono shadow-md absolute -bottom-2.5 right-4 pointer-events-none select-none">
+                                    {(comment.upvotes || 0) > 0 && (
+                                      <span className="flex items-center gap-0.5 text-amber-500">
+                                        👍 {comment.upvotes}
+                                      </span>
+                                    )}
+                                    {(comment.downvotes || 0) > 0 && (
+                                      <span className="flex items-center gap-0.5 text-rose-400">
+                                        👎 {comment.downvotes}
+                                      </span>
+                                    )}
+                                  </div>
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-mono">
-                                <span>{new Date(comment.timestamp).toLocaleDateString()}</span>
-                                <span>{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                              </div>
-                            </div>
+                              {/* Facebook styled Actions line directly below the bubble */}
+                              <div className="flex items-center gap-2.5 mt-1.5 pl-2 text-[10px] text-zinc-500 font-bold select-none flex-wrap">
+                                {/* Time display */}
+                                <span className="font-mono font-medium text-zinc-600">
+                                  {new Date(comment.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                </span>
+                                <span>•</span>
 
-                            {/* Text content view */}
-                            {showInlineEdit ? (
-                              <div className="flex flex-col gap-2 mt-1">
-                                <textarea
-                                  value={editingCommentText}
-                                  onChange={(e) => setEditingCommentText(e.target.value)}
-                                  className="w-full text-zinc-100 text-xs bg-zinc-950 border border-amber-500/30 rounded-xl p-3 focus:outline-none focus:border-amber-500 font-sans"
-                                  rows={2}
-                                  maxLength={1500}
-                                />
-                                <div className="flex justify-end gap-1.5 text-[10px]">
-                                  <button 
-                                    onClick={() => setEditingCommentId(null)}
-                                    className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 hover:text-zinc-300 text-zinc-400 font-semibold transition"
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button 
-                                    onClick={() => handleSaveCommentEdit(comment.id)}
-                                    className="px-3 py-1.5 rounded-xl bg-amber-500 text-zinc-950 font-extrabold hover:bg-amber-600 transition"
-                                  >
-                                    Save Changes
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-zinc-200 text-xs md:text-sm font-sans leading-relaxed break-words pl-0.5 whitespace-pre-wrap">
-                                {comment.text}
-                              </p>
-                            )}
-
-                            {/* Action Row */}
-                            <div className="flex items-center gap-3 mt-1 border-t border-zinc-900/60 pt-3 text-[10.5px] text-zinc-505 font-medium flex-wrap">
-                              <button
-                                onClick={() => handleLikeComment(comment.id)}
-                                className={`flex items-center gap-1.5 py-1 px-2.5 rounded-lg border transition-all ${
-                                  isLiked 
-                                    ? 'bg-[#ef4444]/10 border-[#ef4444]/30 text-rose-400 font-bold' 
-                                    : 'bg-zinc-900/40 border-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-850'
-                                }`}
-                                title="Like Comment"
-                              >
-                                <ThumbsUp className="w-3 h-3" />
-                                <span className="font-mono text-xs">{comment.upvotes || 0}</span>
-                              </button>
-
-                              <button
-                                onClick={() => handleDislikeComment(comment.id)}
-                                className={`flex items-center gap-1.5 py-1 px-2.5 rounded-lg border transition-all ${
-                                  isDisliked 
-                                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 font-bold' 
-                                    : 'bg-zinc-900/40 border-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-850'
-                                }`}
-                                title="Dislike Comment"
-                              >
-                                <ThumbsDown className="w-3 h-3" />
-                                <span className="font-mono text-xs">{comment.downvotes || 0}</span>
-                              </button>
-
-                              {!isBanned && (
+                                {/* Like Link */}
                                 <button
-                                  onClick={() => handleReplyClick(comment.username)}
-                                  className="flex items-center gap-1 px-2 py-1 rounded-lg border border-transparent hover:border-zinc-850 hover:bg-zinc-900 text-zinc-500 hover:text-amber-400 transition font-bold"
+                                  onClick={() => handleLikeComment(comment.id)}
+                                  className={`hover:underline cursor-pointer transition-colors ${
+                                    isLiked ? 'text-amber-400' : 'hover:text-zinc-300'
+                                  }`}
                                 >
-                                  <MessageSquare className="w-3 h-3" />
-                                  <span>Reply</span>
+                                  Like
                                 </button>
-                              )}
+                                <span>•</span>
 
-                              {!isOwner && (
+                                {/* Dislike Link */}
                                 <button
-                                  onClick={() => setReportingItem({ id: comment.id, type: 'comment', content: comment.text })}
-                                  className="text-zinc-650 hover:text-rose-450 transition flex items-center gap-1 ml-auto py-1 px-2 hover:bg-rose-500/5 rounded-lg text-[10px]"
-                                  title="Report Comment"
+                                  onClick={() => handleDislikeComment(comment.id)}
+                                  className={`hover:underline cursor-pointer transition-colors ${
+                                    isDisliked ? 'text-rose-400' : 'hover:text-zinc-300'
+                                  }`}
                                 >
-                                  <Flag className="w-3 h-3" />
-                                  <span>Report</span>
+                                  Dislike
                                 </button>
-                              )}
 
-                              {(isOwner || isUserModerator) && (
-                                <div className={`flex items-center gap-2 ${!isOwner ? 'ml-auto' : ''}`}>
-                                  {isOwner && !showInlineEdit && (
+                                {!isBanned && (
+                                  <>
+                                    <span>•</span>
                                     <button
-                                      onClick={() => {
-                                        setEditingCommentId(comment.id);
-                                        setEditingCommentText(comment.text);
-                                      }}
-                                      className="text-zinc-500 hover:text-amber-500 transition flex items-center gap-1 cursor-pointer py-1 px-2 hover:bg-zinc-900/30 rounded-lg"
+                                      onClick={() => handleReplyClick(comment.username)}
+                                      className="hover:underline cursor-pointer hover:text-amber-400 text-zinc-500 transition-colors"
                                     >
-                                      <Edit className="w-3 h-3" />
-                                      <span>Edit</span>
+                                      Reply
                                     </button>
-                                  )}
+                                  </>
+                                )}
 
-                                  {isUserModerator && !isOwner ? (
+                                {!isOwner && (
+                                  <>
+                                    <span>•</span>
                                     <button
-                                      onClick={() => setDeletingItem({ id: comment.id, type: 'comment', parentPostId: selectedPost.threadId })}
-                                      className="px-2 py-0.5 rounded border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/15 text-rose-400 transition-all flex items-center gap-1 font-black text-[8px] tracking-wide uppercase"
+                                      onClick={() => setReportingItem({ id: comment.id, type: 'comment', content: comment.text })}
+                                      className="hover:underline cursor-pointer hover:text-rose-450 text-zinc-600 transition-colors"
+                                      title="Report Comment"
                                     >
-                                      <Shield className="w-2.5 h-2.5 text-rose-400" />
-                                      <span>Mod Delete</span>
+                                      Report
                                     </button>
-                                  ) : (
-                                    <button
-                                      onClick={() => setDeletingItem({ id: comment.id, type: 'comment', parentPostId: selectedPost.threadId })}
-                                      className="text-zinc-550 hover:text-rose-400 transition flex items-center gap-1 cursor-pointer py-1 px-2 hover:bg-rose-500/5 rounded-lg"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                      <span>Delete</span>
-                                    </button>
-                                  )}
-                                </div>
-                              )}
+                                  </>
+                                )}
+
+                                {(isOwner || isUserModerator) && (
+                                  <>
+                                    <span>•</span>
+                                    <div className="inline-flex items-center gap-1.5">
+                                      {isOwner && !showInlineEdit && (
+                                        <button
+                                          onClick={() => {
+                                            setEditingCommentId(comment.id);
+                                            setEditingCommentText(comment.text);
+                                          }}
+                                          className="hover:underline cursor-pointer hover:text-amber-500 text-zinc-550 transition-colors"
+                                        >
+                                          Edit
+                                        </button>
+                                      )}
+
+                                      {isUserModerator && !isOwner ? (
+                                        <button
+                                          onClick={() => setDeletingItem({ id: comment.id, type: 'comment', parentPostId: selectedPost.threadId })}
+                                          className="hover:underline text-rose-450 cursor-pointer hover:text-rose-400 transition-colors font-bold"
+                                        >
+                                          Kill
+                                        </button>
+                                      ) : (
+                                        <button
+                                          onClick={() => setDeletingItem({ id: comment.id, type: 'comment', parentPostId: selectedPost.threadId })}
+                                          className="hover:underline cursor-pointer hover:text-rose-450 text-zinc-550 transition-colors"
+                                        >
+                                          Delete
+                                        </button>
+                                      )}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );

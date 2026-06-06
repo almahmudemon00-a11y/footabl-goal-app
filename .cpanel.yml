@@ -1,0 +1,8 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/goalspir/public_html/
+    - /bin/rsync -rav --exclude '.git' --exclude '.cpanel.yml' * $DEPLOYPATH
+    - cd $DEPLOYPATH
+    - /bin/npm install
+    - /bin/npm run build
