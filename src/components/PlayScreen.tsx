@@ -461,12 +461,12 @@ export default function PlayScreen({
     if (correct) {
       setStreak(nextStreak);
       setTimeout(() => {
-        setShowNextBtn(true);
-      }, 1000);
+        handleNextRound();
+      }, 1800);
     } else {
       setTimeout(() => {
         setIsGameOver(true);
-      }, 1800);
+      }, 1850);
     }
   };
 
@@ -884,6 +884,22 @@ export default function PlayScreen({
       ) : leftChar && rightChar ? (
         <div className="flex-1 flex flex-col justify-center items-center w-full relative z-20">
           
+          {/* GUESS WHO IS HIGHER HEADER */}
+          {!isRevealed && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-6 select-none"
+            >
+              <h3 className="font-display text-sm md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-[#FF5D42] to-[#E8472A] tracking-wider uppercase animate-pulse flex items-center justify-center gap-1.5 leading-none">
+                <span>⭐ GUESS WHO HAS HIGHER STATS? ⭐</span>
+              </h3>
+              <p className="font-sans text-[9px] md:text-xs text-zinc-400 font-bold uppercase tracking-widest mt-1.5">
+                Click on the player you think is higher to make your choice!
+              </p>
+            </motion.div>
+          )}
+
           <div className="w-full flex flex-row gap-2.5 md:gap-8 items-stretch relative max-w-5xl mx-auto px-1 md:px-0">
             
             {/* LEFT PLAYER CARD - KNOWN BASE REFERENCE */}
@@ -893,7 +909,12 @@ export default function PlayScreen({
               return (
                 <div 
                   id="character_left_card" 
-                  className={`w-full flex-1 aspect-square md:aspect-square ${leftRarity.bgColor} rounded-xl md:rounded-3xl border md:border-2 ${leftRarity.borderBg} overflow-hidden shadow-2xl flex flex-col group relative transition-transform duration-300 hover:scale-[1.01]`}
+                  onClick={() => !isRevealed && handleGuess('lower')}
+                  className={`w-full flex-1 aspect-square md:aspect-square ${leftRarity.bgColor} rounded-xl md:rounded-3xl border md:border-2 overflow-hidden shadow-2xl flex flex-col group relative transition-all duration-300 ${
+                    !isRevealed 
+                      ? 'border-amber-400/40 cursor-pointer hover:scale-[1.03] hover:border-amber-400 hover:shadow-[0_0_30px_rgba(245,158,11,0.3)]' 
+                      : leftRarity.borderBg
+                  }`}
                 >
                   {/* Spotlight Background lighting */}
                   <div className={`absolute inset-0 ${leftRarity.radialLights} pointer-events-none z-0`} />
@@ -974,7 +995,12 @@ export default function PlayScreen({
               return (
                 <div 
                   id="character_right_card" 
-                  className={`w-full flex-1 aspect-square md:aspect-square ${rightRarity.bgColor} rounded-xl md:rounded-3xl border md:border-2 ${rightRarity.borderBg} overflow-hidden shadow-2xl flex flex-col group relative transition-transform duration-300 hover:scale-[1.01]`}
+                  onClick={() => !isRevealed && handleGuess('higher')}
+                  className={`w-full flex-1 aspect-square md:aspect-square ${rightRarity.bgColor} rounded-xl md:rounded-3xl border md:border-2 overflow-hidden shadow-2xl flex flex-col group relative transition-all duration-300 ${
+                    !isRevealed 
+                      ? 'border-[#2A7AE8]/40 cursor-pointer hover:scale-[1.03] hover:border-[#2A7AE8] hover:shadow-[0_0_30px_rgba(42,122,232,0.3)]' 
+                      : rightRarity.borderBg
+                  }`}
                 >
                   {/* Spotlight Background lighting */}
                   <div className={`absolute inset-0 ${rightRarity.radialLights} pointer-events-none z-0`} />
@@ -1058,8 +1084,8 @@ export default function PlayScreen({
                     </div>
 
                     {!isRevealed && (
-                      <span className="block text-[6.5px] md:text-[8px] font-black text-amber-500/80 uppercase tracking-widest mt-0.5 animate-pulse">
-                        CHOOSE HIGHER OR LOWER
+                      <span className="block text-[6.5px] md:text-[8px] font-black text-[#2A7AE8] uppercase tracking-widest mt-0.5 animate-pulse">
+                        HIDDEN RATING
                       </span>
                     )}
                   </div>
@@ -1069,47 +1095,11 @@ export default function PlayScreen({
 
           </div>
 
-          {/* LOWER/HIGHER ACTION DECISIONS PANEL - ALIGNED & PREMIUM */}
+          {/* REVEALED RESULTS & ACTION INFORMATION */}
           <div className="w-full max-w-4xl mx-auto mt-2 md:mt-5 px-3 flex flex-col items-center">
             
             <AnimatePresence mode="wait">
-              {!isRevealed ? (
-                <motion.div
-                  key="guess-actions"
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -15 }}
-                  className="w-full flex flex-row gap-2 max-w-xl px-1"
-                >
-                  <button
-                    id="guess_higher_btn"
-                    onClick={() => handleGuess('higher')}
-                    className="flex-1 h-10 xs:h-11 md:h-14 bg-gradient-to-r from-[#FF5D42] via-[#E8472A] to-[#C8341A] rounded-xl md:rounded-2xl font-display flex flex-col items-center justify-center border-b-[3px] md:border-b-4 border-red-950/80 hover:-translate-y-0.5 active:scale-[0.98] transition-all hover:brightness-110 hover:shadow-[0_0_20px_rgba(232,71,42,0.45)] text-white shadow-xl cursor-pointer px-2.5 py-1"
-                  >
-                    <div className="flex items-center gap-1 font-black text-xs md:text-base tracking-widest">
-                      <span>🔺</span>
-                      <span>HIGHER</span>
-                    </div>
-                    <span className="hidden sm:block text-[9px] md:text-[10px] uppercase font-sans font-bold text-white/90 tracking-wider mt-0.5">
-                      Challenger is higher than base ref
-                    </span>
-                  </button>
-
-                  <button
-                    id="guess_lower_btn"
-                    onClick={() => handleGuess('lower')}
-                    className="flex-1 h-10 xs:h-11 md:h-14 bg-gradient-to-r from-[#4E94FF] via-[#2A7AE8] to-[#145CBE] rounded-xl md:rounded-2xl font-display flex flex-col items-center justify-center border-b-[3px] md:border-b-4 border-blue-950/80 hover:-translate-y-0.5 active:scale-[0.98] transition-all hover:brightness-110 hover:shadow-[0_0_20px_rgba(42,122,232,0.45)] text-white shadow-xl cursor-pointer px-2.5 py-1"
-                  >
-                    <div className="flex items-center gap-1 font-black text-xs md:text-base tracking-widest">
-                      <span>🔻</span>
-                      <span>LOWER</span>
-                    </div>
-                    <span className="hidden sm:block text-[9px] md:text-[10px] uppercase font-sans font-bold text-white/90 tracking-wider mt-0.5">
-                      Challenger is lower than base ref
-                    </span>
-                  </button>
-                </motion.div>
-              ) : (
+              {isRevealed && (
                 <motion.div
                   key="result-overlay"
                   initial={{ scale: 0.95, opacity: 0 }}
@@ -1146,18 +1136,16 @@ export default function PlayScreen({
                     </div>
                   </div>
 
-                  {isCorrect && showNextBtn && (
-                    <motion.button
-                      id="next_round_btn"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.2 }}
-                      onClick={handleNextRound}
-                      className="h-7 md:h-10 bg-gradient-to-r from-amber-500 to-[#E8472A] hover:brightness-110 text-white px-2.5 md:px-5 font-sans font-black text-[8px] md:text-[10px] tracking-wider uppercase rounded-lg transition-all shadow-md active:scale-97 flex items-center justify-center gap-1 cursor-pointer relative z-10 whitespace-nowrap flex-shrink-0"
+                  {isCorrect && (
+                    <motion.div
+                      id="next_round_auto_loader"
+                      initial={{ opacity: 0, x: 15 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex items-center gap-2 text-[#E8472A] font-sans font-black text-[9px] md:text-xs tracking-widest uppercase select-none whitespace-nowrap flex-shrink-0"
                     >
-                      <span>NEXT ROUND</span>
-                      <Sparkles className="w-3 h-3 text-white animate-spin" style={{ animationDuration: '6s' }} />
-                    </motion.button>
+                      <span>NEXT MATCHUP LOADING</span>
+                      <Sparkles className="w-4 h-4 text-amber-500 animate-spin" style={{ animationDuration: '3s' }} />
+                    </motion.div>
                   )}
                 </motion.div>
               )}
