@@ -108,7 +108,7 @@ export default function App() {
       updateSEOMetadata({
         title: "GoalSpire - Play. Debate. Rank Up.",
         description: "GoalSpire is a football player comparison game where you play, debate, and rank up. Guess higher or lower stats and climb the esports leaderboard.",
-        canonicalUrl: "https://goalspire.com/",
+        canonicalUrl: "https://goalspire.top/",
         ogTitle: "GoalSpire - Play. Debate. Rank Up.",
         ogDescription: "GoalSpire is a football player comparison game where you play, debate, and rank up. Guess higher or lower stats and climb the esports leaderboard."
       });
@@ -116,13 +116,13 @@ export default function App() {
       updateSEOMetadata({
         title: "Football Debate Community & Arena Forums | GoalSpire",
         description: "Join debates on Messi vs Ronaldo, Ballon d'Or predictions, and match rankings inside GoalSpire's football forum.",
-        canonicalUrl: "https://goalspire.com/community"
+        canonicalUrl: "https://goalspire.top/community"
       });
     } else if (path === '/settings') {
       updateSEOMetadata({
         title: "Esports Settings & Volume Preferences | GoalSpire",
         description: "Manage sound effects volume, dark theme controls, and administrator tools for GoalSpire.",
-        canonicalUrl: "https://goalspire.com/settings"
+        canonicalUrl: "https://goalspire.top/settings"
       });
     }
   }, [currentPath]);

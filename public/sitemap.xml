@@ -2,19 +2,19 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Primary Game & Home Route -->
   <url>
-    <loc>https://goalspire.com/</loc>
+    <loc>https://goalspire.top/</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>always</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://goalspire.com/community</loc>
+    <loc>https://goalspire.top/community</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://goalspire.com/profile</loc>
+    <loc>https://goalspire.top/profile</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -22,61 +22,61 @@
 
   <!-- Player Profiling Pages -->
   <url>
-    <loc>https://goalspire.com/player/Messi</loc>
+    <loc>https://goalspire.top/player/Messi</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://goalspire.com/player/Ronaldo</loc>
+    <loc>https://goalspire.top/player/Ronaldo</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://goalspire.com/player/Haaland</loc>
+    <loc>https://goalspire.top/player/Haaland</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://goalspire.com/player/Mbappe</loc>
+    <loc>https://goalspire.top/player/Mbappe</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://goalspire.com/player/Salah</loc>
+    <loc>https://goalspire.top/player/Salah</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://goalspire.com/player/Pele</loc>
+    <loc>https://goalspire.top/player/Pele</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://goalspire.com/player/Maradona</loc>
+    <loc>https://goalspire.top/player/Maradona</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://goalspire.com/player/Neymar</loc>
+    <loc>https://goalspire.top/player/Neymar</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://goalspire.com/player/Lewandowski</loc>
+    <loc>https://goalspire.top/player/Lewandowski</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://goalspire.com/player/Ibrahimovic</loc>
+    <loc>https://goalspire.top/player/Ibrahimovic</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -84,13 +84,13 @@
 
   <!-- Popular Static/Seeded Discussion Thread Pages -->
   <url>
-    <loc>https://goalspire.com/post/debate-messi-vs-ronaldo-gand-a</loc>
+    <loc>https://goalspire.top/post/debate-messi-vs-ronaldo-gand-a</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://goalspire.com/post/haaland-triple-crown</loc>
+    <loc>https://goalspire.top/post/haaland-triple-crown</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
@@ -98,7 +98,7 @@
 
   <!-- Representative High Ranking Users -->
   <url>
-    <loc>https://goalspire.com/user/leader-pro</loc>
+    <loc>https://goalspire.top/user/leader-pro</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>

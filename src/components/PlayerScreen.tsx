@@ -44,7 +44,7 @@ export default function PlayerScreen({
     if (player) {
       const pageTitle = `${player.name} Career Stats & Community Debates | GoalSpire`;
       const pageDesc = `Explore ${player.name}'s legendary football record on GoalSpire: ${player.goals} goals, ${player.assists} assists, and ${player.gAndA} goal contributions. Join the fans debate!`;
-      const canonicalUrl = `https://goalspire.com/player/${player.id}`;
+      const canonicalUrl = `https://goalspire.top/player/${player.id}`;
       const ogImg = player.imageUrl || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=400';
 
       // Structured Data Schema for Search Indexing

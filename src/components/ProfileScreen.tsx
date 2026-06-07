@@ -105,7 +105,7 @@ export default function ProfileScreen({
     updateSEOMetadata({
       title: pageTitle,
       description: pageDesc,
-      canonicalUrl: viewedProfile ? `https://goalspire.com/user/${viewedProfile.user.username}` : `https://goalspire.com/profile`
+      canonicalUrl: viewedProfile ? `https://goalspire.top/user/${viewedProfile.user.username}` : `https://goalspire.top/profile`
     });
   }, [viewedProfile]);
 
