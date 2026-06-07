@@ -35,13 +35,97 @@ import PlayScreen from './components/PlayScreen.tsx';
 import CommunityScreen from './components/CommunityScreen.tsx';
 import ProfileScreen from './components/ProfileScreen.tsx';
 import SettingsScreen from './components/SettingsScreen.tsx';
+import PlayerScreen from './components/PlayerScreen.tsx';
+import { updateSEOMetadata } from './utils/seo.ts';
 
 export default function App() {
-  // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'play' | 'community' | 'profile' | 'settings'>('play');
+  // Router path state
+  const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
+
+  // Sync activeTab dynamically with currentPath on mount and popstate runs
+  const [activeTab, setActiveTab] = useState<'play' | 'community' | 'profile' | 'settings'>(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/community') || path.startsWith('/post/')) return 'community';
+    if (path.startsWith('/profile') || path.startsWith('/user/')) return 'profile';
+    if (path.startsWith('/settings')) return 'settings';
+    return 'play';
+  });
   
   // Secondary target to auto-activate inside Community Tab on redirect
   const [communityExpandTargetCharId, setCommunityExpandTargetCharId] = useState<string | undefined>(undefined);
+  const [viewedUserUsername, setViewedUserUsername] = useState<string | undefined>(undefined);
+
+  // Dynamic Navigation trigger helper
+  const navigateTo = (path: string) => {
+    window.history.pushState(null, '', path);
+    setCurrentPath(path);
+  };
+
+  // Listen to browser history navigation changes
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Update inner tabs states and execute page-level SEO updates
+  useEffect(() => {
+    const path = currentPath;
+
+    const postMatch = path.match(/^\/post\/([a-zA-Z0-9_\-]+)/);
+    const playerMatch = path.match(/^\/player\/([a-zA-Z0-9_\-]+)/);
+    const userMatch = path.match(/^\/user\/([a-zA-Z0-9_\-]+)/);
+
+    if (postMatch) {
+      setActiveTab('community');
+      setCommunityExpandTargetCharId(postMatch[1]);
+      setViewedUserUsername(undefined);
+    } else if (playerMatch) {
+      setViewedUserUsername(undefined);
+    } else if (userMatch) {
+      setActiveTab('profile');
+      setViewedUserUsername(userMatch[1]);
+      setCommunityExpandTargetCharId(undefined);
+    } else {
+      setViewedUserUsername(undefined);
+      setCommunityExpandTargetCharId(undefined);
+      
+      if (path === '/community') {
+        setActiveTab('community');
+      } else if (path === '/profile') {
+        setActiveTab('profile');
+      } else if (path === '/settings') {
+        setActiveTab('settings');
+      } else {
+        setActiveTab('play');
+      }
+    }
+
+    // Dynamic global metadata tagging based on current route
+    if (path === '/' || path === '/play' || (!postMatch && !playerMatch && !userMatch && path !== '/community' && path !== '/profile' && path !== '/settings')) {
+      updateSEOMetadata({
+        title: "GoalSpire - Play. Debate. Rank Up.",
+        description: "GoalSpire is a football player comparison game where you play, debate, and rank up. Guess higher or lower stats and climb the esports leaderboard.",
+        canonicalUrl: "https://goalspire.com/",
+        ogTitle: "GoalSpire - Play. Debate. Rank Up.",
+        ogDescription: "GoalSpire is a football player comparison game where you play, debate, and rank up. Guess higher or lower stats and climb the esports leaderboard."
+      });
+    } else if (path === '/community' && !postMatch) {
+      updateSEOMetadata({
+        title: "Football Debate Community & Arena Forums | GoalSpire",
+        description: "Join debates on Messi vs Ronaldo, Ballon d'Or predictions, and match rankings inside GoalSpire's football forum.",
+        canonicalUrl: "https://goalspire.com/community"
+      });
+    } else if (path === '/settings') {
+      updateSEOMetadata({
+        title: "Esports Settings & Volume Preferences | GoalSpire",
+        description: "Manage sound effects volume, dark theme controls, and administrator tools for GoalSpire.",
+        canonicalUrl: "https://goalspire.com/settings"
+      });
+    }
+  }, [currentPath]);
 
   // Theme control: dark/light
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -1123,9 +1207,10 @@ export default function App() {
   // Redirect callback from click inside Play cards to expansive community debate card
   const handleNavigateToCommunity = (charId?: string) => {
     if (charId) {
-      setCommunityExpandTargetCharId(charId);
+      navigateTo(`/post/${charId}`);
+    } else {
+      navigateTo('/community');
     }
-    setActiveTab('community');
   };
 
   return (
@@ -1178,11 +1263,10 @@ export default function App() {
             id="tab_play"
             onClick={() => {
               playClickSound(soundVolume);
-              setActiveTab('play');
-              setCommunityExpandTargetCharId(undefined);
+              navigateTo('/');
             }}
             className={`relative py-5 font-sans font-extrabold text-xs tracking-widest uppercase transition-all ${
-              activeTab === 'play'
+              activeTab === 'play' && !currentPath.startsWith('/player/')
                 ? 'text-primary border-b-2 border-[#E8472A]'
                 : 'text-secondary hover:text-primary'
             }`}
@@ -1194,7 +1278,7 @@ export default function App() {
             id="tab_community"
             onClick={() => {
               playClickSound(soundVolume);
-              setActiveTab('community');
+              navigateTo('/community');
             }}
             className={`relative py-5 font-sans font-extrabold text-xs tracking-widest uppercase transition-all ${
               activeTab === 'community'
@@ -1209,8 +1293,7 @@ export default function App() {
             id="tab_profile"
             onClick={() => {
               playClickSound(soundVolume);
-              setActiveTab('profile');
-              setCommunityExpandTargetCharId(undefined);
+              navigateTo('/profile');
             }}
             className={`relative py-5 font-sans font-extrabold text-xs tracking-widest uppercase transition-all ${
               activeTab === 'profile'
@@ -1237,8 +1320,7 @@ export default function App() {
           <button
             id="theme_toggle_btn"
             onClick={() => {
-              setActiveTab('settings');
-              setCommunityExpandTargetCharId(undefined);
+              navigateTo('/settings');
             }}
             className={`w-9 h-9 items-center justify-center flex rounded-full border border-primary-border hover:bg-card-hover text-secondary hover:text-primary transition-all active:scale-90 ${
               activeTab === 'settings' ? 'bg-[#E8472A]/15 text-[#E8472A] border-[#E8472A]' : ''
@@ -1250,7 +1332,7 @@ export default function App() {
 
           {/* User mini box */}
           <div
-            onClick={() => setActiveTab('profile')}
+            onClick={() => navigateTo('/profile')}
             className="w-10 h-10 rounded-full bg-[#E8472A] flex items-center justify-center font-display text-xs font-bold text-white cursor-pointer select-none border border-white/10 hover:scale-105 active:scale-95 transition-all"
             title={user.username || user.guestId}
           >
@@ -1265,16 +1347,15 @@ export default function App() {
         <button
           onClick={() => {
             playClickSound(soundVolume);
-            setActiveTab('play');
-            setCommunityExpandTargetCharId(undefined);
+            navigateTo('/');
           }}
           className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-250 relative ${
-            activeTab === 'play' 
+            activeTab === 'play' && !currentPath.startsWith('/player/')
               ? 'text-[#E8472A] bg-[#E8472A]/10 font-bold scale-105 shadow-[inset_0_1px_2px_rgba(232,71,42,0.1)]' 
-              : 'text-zinc-450 hover:text-zinc-200'
+               : 'text-zinc-450 hover:text-zinc-200'
           }`}
         >
-          {activeTab === 'play' && (
+          {activeTab === 'play' && !currentPath.startsWith('/player/') && (
             <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[3px] bg-[#E8472A] rounded-b-full shadow-[0_1px_10px_rgba(232,71,42,0.8)]" />
           )}
           <Compass className="w-5 h-5" />
@@ -1284,7 +1365,7 @@ export default function App() {
         <button
           onClick={() => {
             playClickSound(soundVolume);
-            setActiveTab('community');
+            navigateTo('/community');
           }}
           className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-250 relative ${
             activeTab === 'community' 
@@ -1302,8 +1383,7 @@ export default function App() {
         <button
           onClick={() => {
             playClickSound(soundVolume);
-            setActiveTab('profile');
-            setCommunityExpandTargetCharId(undefined);
+            navigateTo('/profile');
           }}
           className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-250 relative ${
             activeTab === 'profile' 
@@ -1321,63 +1401,79 @@ export default function App() {
 
       {/* RENDER CURRENT ACTIVE VIEWPORT */}
       <main className="mb-16 md:mb-0 transition-opacity duration-300">
-        {activeTab === 'play' && (
-          <PlayScreen
+        {currentPath.startsWith('/player/') ? (
+          <PlayerScreen
+            playerId={currentPath.split('/player/')[1]}
             characters={characters}
-            comments={comments}
-            user={user}
-            bestStreak={stats.bestStreak}
-            stats={stats}
-            streak={streak}
-            setStreak={setStreak}
-            soundVolume={soundVolume}
-            onNavigateToCommunity={handleNavigateToCommunity}
-            onUpdateStats={handleUpdateStats}
-            onCustomSheetLoad={(url) => fetchGoogleSheetData(url, !!user.isAdmin)}
-            sheetUrl={sheetUrl}
-            isSheetLoading={isSheetLoading}
-            theme={theme}
+            threads={[]} // Will fetch natively on load inside PlayerScreen
+            onNavigateToPost={(pId) => navigateTo(`/post/${pId}`)}
+            onNavigateToPlayer={(pId) => navigateTo(`/player/${pId}`)}
+            onBack={() => navigateTo('/')}
           />
-        )}
+        ) : (
+          <>
+            {activeTab === 'play' && (
+              <PlayScreen
+                characters={characters}
+                comments={comments}
+                user={user}
+                bestStreak={stats.bestStreak}
+                stats={stats}
+                streak={streak}
+                setStreak={setStreak}
+                soundVolume={soundVolume}
+                onNavigateToCommunity={handleNavigateToCommunity}
+                onUpdateStats={handleUpdateStats}
+                onCustomSheetLoad={(url) => fetchGoogleSheetData(url, !!user.isAdmin)}
+                sheetUrl={sheetUrl}
+                isSheetLoading={isSheetLoading}
+                theme={theme}
+              />
+            )}
 
-        {activeTab === 'community' && (
-          <CommunityScreen
-            characters={characters}
-            comments={comments}
-            user={user}
-            onAddComment={handleAddComment}
-            onUpvoteComment={handleUpvoteComment}
-            initialSelectedCharId={communityExpandTargetCharId}
-          />
-        )}
+            {activeTab === 'community' && (
+              <CommunityScreen
+                characters={characters}
+                comments={comments}
+                user={user}
+                onAddComment={handleAddComment}
+                onUpvoteComment={handleUpvoteComment}
+                initialSelectedCharId={communityExpandTargetCharId}
+                onPathChange={(p) => setCurrentPath(p)}
+                onNavigateToUser={(u) => navigateTo(`/user/${u}`)}
+              />
+            )}
 
-        {activeTab === 'profile' && (
-          <ProfileScreen
-            user={user}
-            stats={stats}
-            comments={comments}
-            onLogin={handleLogin}
-            onLogout={handleLogout}
-            onUpdateUsername={handleUpdateUsername}
-            checkIfUsernameTaken={checkIfUsernameTaken}
-            searchUserByUsername={searchUserByUsername}
-            logoUrl={logoUrl}
-          />
-        )}
+            {activeTab === 'profile' && (
+              <ProfileScreen
+                user={user}
+                stats={stats}
+                comments={comments}
+                onLogin={handleLogin}
+                onLogout={handleLogout}
+                onUpdateUsername={handleUpdateUsername}
+                checkIfUsernameTaken={checkIfUsernameTaken}
+                searchUserByUsername={searchUserByUsername}
+                logoUrl={logoUrl}
+                initialViewedUsername={viewedUserUsername}
+              />
+            )}
 
-        {activeTab === 'settings' && (
-          <SettingsScreen
-            theme={theme}
-            onThemeToggle={() => {
-              playClickSound(soundVolume);
-              setTheme(theme === 'dark' ? 'light' : 'dark');
-            }}
-            user={user}
-            feedbackEmail={feedbackEmail}
-            onUpdateFeedbackEmail={handleUpdateFeedbackEmail}
-            soundVolume={soundVolume}
-            onSoundVolumeChange={handleSoundVolumeChange}
-          />
+            {activeTab === 'settings' && (
+              <SettingsScreen
+                theme={theme}
+                onThemeToggle={() => {
+                  playClickSound(soundVolume);
+                  setTheme(theme === 'dark' ? 'light' : 'dark');
+                }}
+                user={user}
+                feedbackEmail={feedbackEmail}
+                onUpdateFeedbackEmail={handleUpdateFeedbackEmail}
+                soundVolume={soundVolume}
+                onSoundVolumeChange={handleSoundVolumeChange}
+              />
+            )}
+          </>
         )}
       </main>
 

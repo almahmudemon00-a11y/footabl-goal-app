@@ -1173,16 +1173,31 @@ export default function PlayScreen({
                   transition={{ delay: 0.2 }}
                   className="hidden md:flex w-full bg-zinc-950/70 border border-white/5 p-4 rounded-3xl mt-6 flex-col gap-3 backdrop-blur-md"
                 >
-                  <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                  <div className="flex justify-between items-center pb-2 border-b border-white/5 flex-wrap gap-2">
                     <span className="font-sans font-black text-[10px] tracking-widest text-[#E8472A] uppercase flex items-center gap-2">
-                      <MessageSquare className="w-3.5 h-3.5" /> community debate boards
+                      <MessageSquare className="w-3.5 h-3.5" /> athlete statistics profiles
                     </span>
-                    <button
-                      onClick={() => onNavigateToCommunity(rightChar.id)}
-                      className="font-sans font-bold text-[10px] text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                    >
-                      Compare & Debate stats →
-                    </button>
+                    <div className="flex gap-3 text-[10px] font-sans font-bold">
+                      <button
+                        onClick={() => {
+                          window.history.pushState(null, '', `/player/${leftChar.id}`);
+                          window.dispatchEvent(new PopStateEvent('popstate'));
+                        }}
+                        className="text-amber-500 hover:text-white transition-colors cursor-pointer underline flex items-center gap-0.5"
+                      >
+                        <span>{leftChar.name} stats</span>
+                      </button>
+                      <span className="text-zinc-700 select-none">|</span>
+                      <button
+                        onClick={() => {
+                          window.history.pushState(null, '', `/player/${rightChar.id}`);
+                          window.dispatchEvent(new PopStateEvent('popstate'));
+                        }}
+                        className="text-amber-500 hover:text-white transition-colors cursor-pointer underline flex items-center gap-0.5"
+                      >
+                        <span>{rightChar.name} stats</span>
+                      </button>
+                    </div>
                   </div>
                   <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto">
                     {activeComments.slice(0, 2).map((comment) => (

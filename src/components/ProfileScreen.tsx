@@ -3,13 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, Sparkles, LogIn, LogOut, Edit2, MessageSquare, Flame, Search, ArrowLeft, Shield } from 'lucide-react';
 import { User, UserStats, Comment } from '../types.ts';
 import { PRE_SEEDED_COMMENTS } from '../data.ts';
 import { getLevelProgress } from './PlayScreen.tsx';
 import { getDirectImageUrl } from '../utils.ts';
+import { updateSEOMetadata } from '../utils/seo.ts';
 
 interface ProfileScreenProps {
   user: User;
@@ -21,6 +22,7 @@ interface ProfileScreenProps {
   checkIfUsernameTaken: (usernameToCheck: string, excludeUid: string | null) => Promise<boolean>;
   searchUserByUsername: (username: string) => Promise<{ searchedUser: User; searchedStats: UserStats } | null>;
   logoUrl?: string;
+  initialViewedUsername?: string;
 }
 
 export default function ProfileScreen({
@@ -32,7 +34,8 @@ export default function ProfileScreen({
   onUpdateUsername,
   checkIfUsernameTaken,
   searchUserByUsername,
-  logoUrl
+  logoUrl,
+  initialViewedUsername
 }: ProfileScreenProps) {
   // Tabs inside Profile: 'stats' or 'my-comments'
   const [activeSubTab, setActiveSubTab] = useState<'stats' | 'comments'>('stats');
@@ -62,6 +65,49 @@ export default function ProfileScreen({
 
   // Authentication in-progress pending state
   const [isAuthPending, setIsAuthPending] = useState<boolean>(false);
+
+  // Automatically search and load user profile if initialViewedUsername is provided
+  useEffect(() => {
+    if (initialViewedUsername) {
+      const loadProfile = async () => {
+        setIsSearching(true);
+        setSearchError(null);
+        try {
+          const result = await searchUserByUsername(initialViewedUsername);
+          if (result) {
+            setViewedProfile({ user: result.searchedUser, stats: result.searchedStats });
+            setSearchError(null);
+          } else {
+            setSearchError(`No player found with the username "${initialViewedUsername}".`);
+          }
+        } catch (e) {
+          setSearchError('Something went wrong during the search query.');
+        } finally {
+          setIsSearching(false);
+        }
+      };
+      loadProfile();
+    } else {
+      setViewedProfile(null);
+    }
+  }, [initialViewedUsername, searchUserByUsername]);
+
+  // Synchronize SEO metadata based on own profile or viewed target profile
+  useEffect(() => {
+    const pageTitle = viewedProfile 
+      ? `@${viewedProfile.user.username} Football Esports Record | GoalSpire`
+      : `Self Standing Dashboard & Private Badges | GoalSpire`;
+    
+    const pageDesc = viewedProfile
+      ? `@${viewedProfile.user.username}'s GoalSpire profile. Stats show a correct streak score of ${viewedProfile.stats.bestStreak} with deep expertise in ${viewedProfile.stats.favoriteUniverse || 'European Leagues'}.`
+      : "Access your esports dashboard, check guessing streak archives, edit username badges, or authenticate securely.";
+    
+    updateSEOMetadata({
+      title: pageTitle,
+      description: pageDesc,
+      canonicalUrl: viewedProfile ? `https://goalspire.com/user/${viewedProfile.user.username}` : `https://goalspire.com/profile`
+    });
+  }, [viewedProfile]);
 
   // Handler for Profile Search
   const handleSearch = async () => {

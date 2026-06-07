@@ -9,7 +9,7 @@ import {
   Flame, Award, Shield, MessageSquare, Share2, Flag, Search, PlusCircle, Pin, Activity, Bell, 
   CheckCircle2, Users, AlertCircle, Clock, Send, Sparkles, SlidersHorizontal, HelpCircle, 
   Trash2, Edit, ChevronRight, X, Heart, ShieldAlert, BadgeInfo, Play, ThumbsUp, ThumbsDown,
-  ChevronDown, ChevronUp, Check
+  ChevronDown, ChevronUp, Check, ExternalLink
 } from 'lucide-react';
 import { Thread, Comment, User, Report } from '../types.ts';
 
@@ -59,12 +59,16 @@ interface CommunityScreenProps {
   onAddComment: any;
   onUpvoteComment: any;
   initialSelectedCharId?: string;
+  onPathChange?: (path: string) => void;
+  onNavigateToUser?: (username: string) => void;
 }
 
 export default function CommunityScreen({
   characters,
   user,
-  initialSelectedCharId
+  initialSelectedCharId,
+  onPathChange,
+  onNavigateToUser
 }: CommunityScreenProps) {
   const myUid = user.uid || user.guestId;
   const isGuest = user.isGuest;
@@ -367,6 +371,28 @@ export default function CommunityScreen({
       }
     }
   }, [initialSelectedCharId, posts]);
+
+  // Handle URL synchronizer and outer state change on post opening/closing
+  useEffect(() => {
+    if (selectedPost) {
+      const targetPath = `/post/${selectedPost.threadId}`;
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState(null, '', targetPath);
+        if (onPathChange) {
+          onPathChange(targetPath);
+        }
+      }
+    } else {
+      const currentPath = window.location.pathname;
+      if (currentPath.startsWith('/post/')) {
+        const fallbackPath = '/community';
+        window.history.pushState(null, '', fallbackPath);
+        if (onPathChange) {
+          onPathChange(fallbackPath);
+        }
+      }
+    }
+  }, [selectedPost]);
 
   // Core authorization variables
   const isBanned = userProfile?.isBanned === true;
@@ -1946,7 +1972,19 @@ export default function CommunityScreen({
 
                           <div className="text-left flex flex-col">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-extrabold text-sm text-zinc-100 group-hover:text-amber-400 transition-colors">@{post.username}</span>
+                              <a
+                                href={`/user/${post.username}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  if (onNavigateToUser) {
+                                    onNavigateToUser(post.username);
+                                  }
+                                }}
+                                className="font-extrabold text-sm text-zinc-100 hover:text-amber-400 transition-colors cursor-pointer"
+                              >
+                                @{post.username}
+                              </a>
                               {/* Band rank badge */}
                               <span className={`text-[8px] px-1.5 py-0.5 rounded-md border tracking-wider font-extrabold uppercase ${authorMeta.color} ${authorMeta.bg}`}>
                                 {authorMeta.rank}
@@ -2363,12 +2401,54 @@ export default function CommunityScreen({
                 {/* Metadata row */}
                 {!isScrolled && (
                   <div className="flex items-center gap-2 flex-wrap text-xs mb-3">
-                    <span className="bg-amber-500/10 border border-amber-500/15 text-[#ffa83e] text-[9px] font-black px-2 py-0.5 rounded tracking-wider uppercase">
-                      {selectedPost.category}
-                    </span>
+                    {(() => {
+                      const lowerCat = selectedPost.category ? selectedPost.category.toLowerCase() : '';
+                      const dbChar = characters.find(c => 
+                        c.id.toLowerCase() === lowerCat || 
+                        c.name.toLowerCase().includes(lowerCat) ||
+                        lowerCat.includes(c.id.toLowerCase())
+                      );
+                      
+                      if (dbChar) {
+                        return (
+                          <a
+                            href={`/player/${dbChar.id}`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setSelectedPost(null);
+                              window.history.pushState(null, '', `/player/${dbChar.id}`);
+                              const popEvent = new PopStateEvent('popstate');
+                              window.dispatchEvent(popEvent);
+                            }}
+                            className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/15 hover:border-amber-500/30 text-[#ffa83e] hover:text-amber-400 text-[10px] font-black px-2.5 py-1 rounded tracking-wider uppercase flex items-center gap-1 transition-all cursor-pointer"
+                            title={`View ${dbChar.name} Player Profile Stats`}
+                          >
+                            <span>{selectedPost.category}</span>
+                            <ExternalLink className="w-2.5 h-2.5 inline shrink-0" />
+                          </a>
+                        );
+                      }
+                      
+                      return (
+                        <span className="bg-amber-500/10 border border-amber-500/15 text-[#ffa83e] text-[9px] font-black px-2 py-0.5 rounded tracking-wider uppercase">
+                          {selectedPost.category}
+                        </span>
+                      );
+                    })()}
                     <span className="text-zinc-700 font-bold">•</span>
                     <span className="text-zinc-500 text-[10px]">Initiated by</span>
-                    <span className="font-extrabold text-[#ffa03f]">@{selectedPost.username}</span>
+                    <a
+                      href={`/user/${selectedPost.username}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (onNavigateToUser) {
+                          onNavigateToUser(selectedPost.username);
+                        }
+                      }}
+                      className="font-extrabold text-[#ffa03f] hover:underline cursor-pointer"
+                    >
+                      @{selectedPost.username}
+                    </a>
                     <span className={`text-[8px] px-1.5 py-0.5 rounded-md border tracking-wide font-extrabold uppercase ${getUserMeta(selectedPost.userId).color} ${getUserMeta(selectedPost.userId).bg}`}>
                       {getUserMeta(selectedPost.userId).rank}
                     </span>
@@ -2414,7 +2494,18 @@ export default function CommunityScreen({
                     </span>
                     {isScrolled && (
                       <span className="ml-auto text-[9px] text-zinc-500">
-                        by @{selectedPost.username}
+                        by <a
+                          href={`/user/${selectedPost.username}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (onNavigateToUser) {
+                              onNavigateToUser(selectedPost.username);
+                            }
+                          }}
+                          className="hover:underline text-zinc-400 hover:text-white cursor-pointer"
+                        >
+                          @{selectedPost.username}
+                        </a>
                       </span>
                     )}
                   </div>
@@ -2482,13 +2573,35 @@ export default function CommunityScreen({
                               } w-auto max-w-full shadow-sm`}>
                                 {/* Header username / rank line */}
                                 <div className="flex items-center gap-2 flex-wrap text-xs mb-1 select-none">
-                                  <span className="font-extrabold text-[#ffa03f]">@{comment.username}</span>
+                                  <a
+                                    href={`/user/${comment.username}`}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      if (onNavigateToUser) {
+                                        onNavigateToUser(comment.username);
+                                      }
+                                    }}
+                                    className="font-extrabold text-[#ffa03f] hover:underline cursor-pointer"
+                                  >
+                                    @{comment.username}
+                                  </a>
                                   <span className={`text-[7.5px] px-1 py-0.2 rounded font-extrabold uppercase ${authorMeta.color} ${authorMeta.bg_border || authorMeta.bg}`}>
                                     {authorMeta.rank}
                                   </span>
                                   {isReply && (
                                     <span className="text-[10px] text-zinc-550 lowercase">
-                                      rep @{comment.replyToUsername}
+                                      rep <a
+                                        href={`/user/${comment.replyToUsername}`}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          if (onNavigateToUser) {
+                                            onNavigateToUser(comment.replyToUsername);
+                                          }
+                                        }}
+                                        className="hover:underline text-zinc-400 hover:text-white cursor-pointer"
+                                      >
+                                        @{comment.replyToUsername}
+                                      </a>
                                     </span>
                                   )}
                                 </div>
