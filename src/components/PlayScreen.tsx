@@ -927,12 +927,6 @@ export default function PlayScreen({
                           {leftChar.category}
                         </span>
                       </div>
-                      <div className={`bg-zinc-950/90 backdrop-blur-md px-1 md:px-3 py-0.5 md:py-[5px] rounded-full border flex items-center gap-0.5 md:gap-1.5 shadow-lg max-w-[55px] xs:max-w-[75px] md:max-w-none ${getUnivPill(leftChar.universe).border}`}>
-                        <span className="text-[8px] md:text-sm leading-none flex-shrink-0 select-none">⚽</span>
-                        <span className="text-[6.5px] xs:text-[7.5px] md:text-[11px] font-bold truncate tracking-wide" style={{ color: getUnivPill(leftChar.universe).text }}>
-                          {leftChar.universe}
-                        </span>
-                      </div>
                     </div>
 
                     <div className="absolute bottom-1 md:bottom-4 left-2 md:left-4 right-2 md:right-4 z-20 text-center select-none pointer-events-none">
@@ -1012,12 +1006,6 @@ export default function PlayScreen({
                         <span className="text-[8px] md:text-sm leading-none flex-shrink-0 select-none">🌍</span>
                         <span className="text-[6.5px] xs:text-[7.5px] md:text-[11px] font-bold text-zinc-300 truncate tracking-wide">
                           {rightChar.category}
-                        </span>
-                      </div>
-                      <div className={`bg-zinc-950/90 backdrop-blur-md px-1 md:px-3 py-0.5 md:py-[5px] rounded-full border flex items-center gap-0.5 md:gap-1.5 shadow-lg max-w-[55px] xs:max-w-[75px] md:max-w-none ${getUnivPill(rightChar.universe).border}`}>
-                        <span className="text-[8px] md:text-sm leading-none flex-shrink-0 select-none">⚽</span>
-                        <span className="text-[6.5px] xs:text-[7.5px] md:text-[11px] font-bold truncate tracking-wide" style={{ color: getUnivPill(rightChar.universe).text }}>
-                          {rightChar.universe}
                         </span>
                       </div>
                     </div>

@@ -1,0 +1,7 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Host & Sitemap location for Google Search Console indexers
+Host: https://goalspire.com
+Sitemap: https://goalspire.com/sitemap.xml
