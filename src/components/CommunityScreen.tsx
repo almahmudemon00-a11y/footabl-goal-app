@@ -65,6 +65,7 @@ interface CommunityScreenProps {
 
 export default function CommunityScreen({
   characters,
+  comments,
   user,
   initialSelectedCharId,
   onPathChange,
@@ -85,7 +86,13 @@ export default function CommunityScreen({
 
   // Firestore Data stores
   const [posts, setPosts] = useState<Thread[]>([]);
-  const [allComments, setAllComments] = useState<any[]>([]);
+  
+  // Derived from comments prop to eliminate duplicate database streams and reduce CPU/network load
+  const allComments = useMemo(() => {
+    if (!comments) return [];
+    return Object.values(comments).flat().sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  }, [comments]);
+
   const [usersList, setUsersList] = useState<any[]>([]);
   const [reportsList, setReportsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -93,10 +100,18 @@ export default function CommunityScreen({
   // Current logged in user profile from Firestore users collection (to check ban status, reputation penalties, and actual roles)
   const [userProfile, setUserProfile] = useState<any>(null);
 
-  // Filters and searches
+  // Filters and searches (optimized with debounced input to prevent typing lag)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortOption, setSortOption] = useState<'newest' | 'likes' | 'active'>('newest');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // New Category Dropdown Systems
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState<boolean>(false);
@@ -211,12 +226,32 @@ export default function CommunityScreen({
   const [deletingItem, setDeletingItem] = useState<{ id: string; type: 'post' | 'comment'; parentPostId?: string } | null>(null);
 
   // Admin states
+  const [userInputVal, setUserInputVal] = useState<string>('');
   const [userSearchQuery, setUserSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setUserSearchQuery(userInputVal);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [userInputVal]);
   const [newCategoryName, setNewCategoryName] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError: boolean } | null>(null);
 
   // Expanded post for Full Details Modal (replies tree)
   const [selectedPost, setSelectedPost] = useState<Thread | null>(null);
+
+  // Body scroll lock when discussion details are open to optimize screen scrolling on phone
+  useEffect(() => {
+    if (selectedPost) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedPost]);
 
   // Quick notification banner helper
   const triggerNotification = (text: string, isError = false) => {
@@ -298,21 +333,7 @@ export default function CommunityScreen({
     return () => unsubPosts();
   }, []);
 
-  // Real-time listener for comments ('comments')
-  useEffect(() => {
-    const qComments = query(collection(db, 'comments'), orderBy('timestamp', 'asc'));
-    const unsubComments = onSnapshot(qComments, (snap) => {
-      const list: any[] = [];
-      snap.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() });
-      });
-      setAllComments(list);
-    }, (err) => {
-      console.error("Comments loading error:", err);
-    });
 
-    return () => unsubComments();
-  }, []);
 
   // Real-time listener for users list (Admin view)
   useEffect(() => {
@@ -1332,18 +1353,19 @@ export default function CommunityScreen({
                   <input
                     type="text"
                     placeholder="Search keywords..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
                     className="w-full text-zinc-100 placeholder-zinc-500 text-xs bg-zinc-900 border border-zinc-800 rounded-xl py-2.5 pl-9 pr-3 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/10 transition-all text-left"
                   />
                   <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-3.5" />
                 </div>
 
                 {/* Reset filter trigger */}
-                {(selectedCategory || searchQuery.trim()) && (
+                {(selectedCategory || searchInput.trim() || searchQuery.trim()) && (
                   <button
                     onClick={() => {
                       setSelectedCategory(null);
+                      setSearchInput('');
                       setSearchQuery('');
                       setIsMobileFiltersOpen(false);
                     }}
@@ -1709,8 +1731,8 @@ export default function CommunityScreen({
                     <input
                       type="text"
                       placeholder="Search User Profiles by Name..."
-                      value={userSearchQuery}
-                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      value={userInputVal}
+                      onChange={(e) => setUserInputVal(e.target.value)}
                       className="w-full text-zinc-100 text-xs bg-zinc-950 border border-zinc-900 rounded-xl p-3 pl-10 focus:outline-none focus:border-rose-500 text-left"
                     />
                     <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-3.5" />
@@ -2319,16 +2341,16 @@ export default function CommunityScreen({
          ======================================================== */}
       <AnimatePresence>
         {selectedPost && (
-          <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md flex justify-end">
+          <div className="fixed inset-0 z-40 bg-black/60 md:bg-black/80 md:backdrop-blur-md flex justify-end">
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 210 }}
-              className="w-full max-w-2xl bg-zinc-950 md:border-l border-zinc-900 shadow-2xl h-screen flex flex-col text-left overflow-hidden"
+              className="w-full max-w-full md:max-w-2xl bg-zinc-950 md:border-l border-zinc-900 shadow-2xl h-[100dvh] md:h-screen flex flex-col text-left overflow-hidden"
             >
               {/* Overlay header */}
-              <div className="shrink-0 bg-[#0e0e12]/95 border-b border-zinc-900 px-6 py-4 flex items-center justify-between">
+              <div className="shrink-0 bg-[#0e0e12]/95 border-b border-zinc-900 px-4 py-3.5 md:px-6 md:py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-amber-500 animate-pulse" />
                   <span className="text-xs font-black text-zinc-100 uppercase tracking-widest">Discussion Area</span>
@@ -2336,7 +2358,7 @@ export default function CommunityScreen({
                 
                 <button
                   onClick={() => setSelectedPost(null)}
-                  className="p-1.5 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition flex items-center gap-1 text-xs font-bold cursor-pointer"
+                  className="p-2 px-3.5 md:p-1.5 md:px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition flex items-center gap-1 text-xs font-bold cursor-pointer min-h-[38px] active:scale-95 select-none"
                 >
                   <X className="w-3.5 h-3.5" /> Close
                 </button>
@@ -2467,7 +2489,7 @@ export default function CommunityScreen({
                 onScroll={(e) => {
                   setIsScrolled(e.currentTarget.scrollTop > 40);
                 }}
-                className="flex-1 overflow-y-auto p-5 md:p-6 flex flex-col gap-6"
+                className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-5 md:gap-6"
               >
 
                 {/* FLAT CHRONOLOGICAL COMMENTS FEED */}
@@ -2478,7 +2500,7 @@ export default function CommunityScreen({
                   </div>
 
                   {/* Render comments flat ordered by timestamp ascending */}
-                  <div className="flex flex-col gap-6">
+                  <div className="flex flex-col gap-5 md:gap-6">
                     {(() => {
                       const postComments = allComments.filter(
                         c => c.postId === selectedPost.threadId || c.characterId === selectedPost.threadId
@@ -2499,11 +2521,11 @@ export default function CommunityScreen({
                         return (
                           <div 
                             key={comment.id}
-                            className={`flex gap-3 text-left relative group ${isReply ? 'pl-8 md:pl-10 ml-2' : ''}`}
+                            className={`flex gap-2.5 md:gap-3 text-left relative group ${isReply ? 'pl-5 md:pl-10 ml-1 md:ml-2' : ''}`}
                           >
                             {/* Curved link thread line like Facebook comments! */}
                             {isReply && (
-                              <div className="absolute -left-3 top-0 bottom-6 w-5 border-l border-b border-zinc-800 rounded-bl-xl pointer-events-none opacity-50" />
+                              <div className="absolute -left-2 md:-left-3 top-0 bottom-6 w-3.5 md:w-5 border-l border-b border-zinc-800 rounded-bl-xl pointer-events-none opacity-50" />
                             )}
 
                             {/* User avatar on Left */}
@@ -2715,24 +2737,27 @@ export default function CommunityScreen({
                   </div>
                 ) : (
                   <form onSubmit={(e) => handleAddRootComment(e, selectedPost.threadId)} className="flex flex-col gap-2">
-                    <div className="flex justify-end">
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-gradient-to-tr from-amber-500 to-amber-600 text-zinc-950 font-black rounded-lg text-[11px] flex items-center gap-1 hover:brightness-110 active:scale-98 transition-all cursor-pointer"
-                      >
-                        <Send className="w-3 h-3" /> Submit Comment
-                      </button>
-                    </div>
                     <textarea
                       ref={commentInputRef}
                       placeholder="Contribute text insight to this debate pool... (use @username to reply)"
                       value={newCommentText}
                       onChange={(e) => setNewCommentText(e.target.value)}
                       required
-                      className="w-full text-zinc-150 placeholder-zinc-600 text-xs bg-zinc-900/40 border border-zinc-850 rounded-xl p-3 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/15 text-left font-sans transition-all"
+                      className="w-full text-zinc-150 placeholder-zinc-650 text-xs bg-zinc-900/40 border border-zinc-850 rounded-xl p-3 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/15 text-left font-sans transition-all"
                       rows={2}
                       maxLength={1500}
                     />
+                    <div className="flex justify-between items-center px-0.5">
+                      <span className="text-[9px] text-zinc-500 font-mono">
+                        {(newCommentText || '').length}/1500
+                      </span>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-gradient-to-tr from-amber-500 to-amber-600 text-zinc-950 font-black rounded-lg text-[11px] flex items-center gap-1 hover:brightness-110 active:scale-98 transition-all cursor-pointer min-h-[38px]"
+                      >
+                        <Send className="w-3 h-3" /> Submit Comment
+                      </button>
+                    </div>
                   </form>
                 )}
               </div>

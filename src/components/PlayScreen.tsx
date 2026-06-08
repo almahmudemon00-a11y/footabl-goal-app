@@ -49,23 +49,26 @@ export interface LevelProgressInfo {
   guessesNeeded: number;
 }
 
-export function getLevelProgress(correctGuesses: number): LevelProgressInfo {
-  // Thresholds represent the total correctGuesses required to reach the NEXT level:
-  // Level 1 -> reaches Level 2 at 5
-  // Level 2 -> reaches Level 3 at 15
-  // Level 3 -> reaches Level 4 at 30
-  // Level 4 -> reaches Level 5 at 50
+// Static pre-computed thresholds to prevent recreating a 1000-element array on every single render.
+// Thresholds represent the total correctGuesses required to reach the NEXT level:
+// Level 1 -> reaches Level 2 at 5
+// Level 2 -> reaches Level 3 at 15
+// Level 3 -> reaches Level 4 at 30
+// Level 4 -> reaches Level 5 at 50
+const STATIC_THRESHOLDS: number[] = (() => {
   const thresholds = [5, 15, 30, 50];
-  
   let currentVal = 50;
   let diff = 20;
-  
-  // Fill up to 1000 thresholds dynamically
   while (thresholds.length < 1000) {
     diff += 5;
     currentVal += diff;
     thresholds.push(currentVal);
   }
+  return thresholds;
+})();
+
+export function getLevelProgress(correctGuesses: number): LevelProgressInfo {
+  const thresholds = STATIC_THRESHOLDS;
   
   let level = 1;
   for (let i = 0; i < thresholds.length; i++) {
