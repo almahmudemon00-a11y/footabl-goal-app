@@ -704,10 +704,7 @@ export default function PlayScreen({
           {/* Progress Track, Labels, and Remaining XP */}
           <div className="flex flex-col flex-1 min-w-0 pr-1 select-none">
             {/* Top Row: Title & current progression status */}
-            <div className="flex justify-between items-baseline mb-1 gap-1">
-              <span className="text-[7.5px] md:text-[8.5px] font-sans font-black text-zinc-300 uppercase tracking-widest truncate">
-                REGIONAL RANK
-              </span>
+            <div className="flex justify-end items-baseline mb-1 gap-1">
               <span className="text-[7px] md:text-[8px] font-mono text-zinc-400 font-bold">
                 {stats.correctGuesses} / {levelProgress.totalToNext} PTS
               </span>

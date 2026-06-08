@@ -83,12 +83,12 @@ service cloud.firestore {
     
     function isValidScore(data) {
       return data.keys().hasAll(['userId', 'username', 'avatar', 'bestStreak', 'gamesPlayed', 'correctGuesses', 'totalGuesses', 'joinedDate', 'updatedAt'])
-        && data.keys().size() <= 14 // Optional favoriteUniverse, savedThreadIds or extra fields up to 14
+        && data.keys().size() <= 20 // Extra fields like favoriteUniverse, savedThreadIds up to 20
         && data.userId is string
         && data.userId.size() <= 64
         && data.username is string
         && data.username.size() >= 2
-        && data.username.size() <= 30
+        && data.username.size() <= 40
         && data.avatar is string
         && data.avatar.size() <= 10
         && data.joinedDate is string
@@ -130,10 +130,12 @@ service cloud.firestore {
           (isSignedIn() && isAdmin())
          );
       
-      allow delete: if isSignedIn() && (
-        existing().userId == request.auth.uid || 
-        get(/databases/$(database)/documents/threads/$(existing().characterId)).data.userId == request.auth.uid || 
-        isAdmin()
+      allow delete: if (
+        (request.auth != null && existing().userId == request.auth.uid) ||
+        isAdmin() ||
+        (existing().characterId is string && 
+         exists(/databases/$(database)/documents/threads/$(existing().characterId)) && 
+         get(/databases/$(database)/documents/threads/$(existing().characterId)).data.userId == request.auth.uid)
       );
     }
 
@@ -171,7 +173,7 @@ service cloud.firestore {
     
     function isValidComment(data) {
       return data.keys().hasAll(['commentId', 'characterId', 'userId', 'username', 'text', 'upvotes', 'timestamp'])
-        && data.keys().size() <= 14
+        && data.keys().size() <= 22
         && data.commentId is string
         && data.commentId.size() <= 64
         && data.characterId is string
@@ -191,7 +193,7 @@ service cloud.firestore {
 
     function isValidThread(data) {
       return data.keys().hasAll(['threadId', 'title', 'description', 'category', 'type', 'userId', 'username', 'userAvatar', 'upvotes', 'downvotes', 'timestamp'])
-        && data.keys().size() <= 18
+        && data.keys().size() <= 30
         && data.threadId is string
         && data.threadId.size() <= 64
         && data.title is string
@@ -228,9 +230,16 @@ service cloud.firestore {
     // -------------------------------------------------------------
     match /reports/{reportId} {
       allow read, list: if isAdmin();
-      allow create: if isSignedIn();
+      allow create: if true; // Allow anyone (including guest users) to create reports
       allow update: if false; // Reports should remain tamper-proof
       allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // TEST COLLECTION (Connection Check on Boot)
+    // -------------------------------------------------------------
+    match /test/{testId} {
+      allow read: if true;
     }
   }
 }

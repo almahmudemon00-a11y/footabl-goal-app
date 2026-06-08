@@ -165,20 +165,26 @@ export default function App() {
   const [user, setUser] = useState<UserType>(() => {
     // Check local guest/username records
     let guestId = localStorage.getItem('guestId');
-    if (!guestId) {
-      guestId = 'Guest_' + Math.floor(1000 + Math.random() * 9000);
+    if (!guestId || !/^GuestUser\d{5}$/.test(guestId)) {
+      const randNum = Math.floor(10000 + Math.random() * 90000);
+      guestId = `GuestUser${randNum}`;
       localStorage.setItem('guestId', guestId);
     }
 
-    const savedUsername = localStorage.getItem('username');
+    let savedUsername = localStorage.getItem('username');
+    if (!savedUsername || !/^GuestUser\d{5}$/.test(savedUsername)) {
+      savedUsername = guestId;
+      localStorage.setItem('username', savedUsername);
+    }
+
     const savedAvatar = localStorage.getItem('avatar');
     const savedJoined = localStorage.getItem('joined_date') || new Date().toLocaleDateString();
 
     return {
-      isGuest: !savedUsername,
+      isGuest: true,
       guestId,
       username: savedUsername,
-      avatar: savedAvatar || (savedUsername ? savedUsername.slice(0, 2).toUpperCase() : 'G'),
+      avatar: savedAvatar || (savedUsername ? savedUsername.slice(0, 2).toUpperCase() : 'GU'),
       joinedDate: savedJoined,
     };
   });
@@ -550,17 +556,27 @@ export default function App() {
         await createOrGetUserProfile(firebaseUser);
       } else {
         // Logged out / Fallback to local guest indices
-        const currentGuestId = localStorage.getItem('guestId') || 'Guest_' + Math.floor(1000 + Math.random() * 9000);
-        localStorage.setItem('guestId', currentGuestId);
-        const savedUsername = localStorage.getItem('username');
+        let currentGuestId = localStorage.getItem('guestId');
+        if (!currentGuestId || !/^GuestUser\d{5}$/.test(currentGuestId)) {
+          const randNum = Math.floor(10000 + Math.random() * 90000);
+          currentGuestId = `GuestUser${randNum}`;
+          localStorage.setItem('guestId', currentGuestId);
+        }
+
+        let savedUsername = localStorage.getItem('username');
+        if (!savedUsername || !/^GuestUser\d{5}$/.test(savedUsername)) {
+          savedUsername = currentGuestId;
+          localStorage.setItem('username', savedUsername);
+        }
+
         const savedAvatar = localStorage.getItem('avatar');
         
         setUser({
           uid: undefined,
-          isGuest: !savedUsername,
+          isGuest: true,
           guestId: currentGuestId,
           username: savedUsername,
-          avatar: savedAvatar || (savedUsername ? savedUsername.slice(0, 2).toUpperCase() : 'G'),
+          avatar: savedAvatar || (savedUsername ? savedUsername.slice(0, 2).toUpperCase() : 'GU'),
           joinedDate: localStorage.getItem('joined_date') || new Date().toLocaleDateString(),
           isAdmin: false,
         });
@@ -1014,12 +1030,19 @@ export default function App() {
       
       await signOut(auth);
       
-      const currentGuestId = localStorage.getItem('guestId') || 'Guest_' + Math.floor(1000 + Math.random() * 9000);
+      let currentGuestId = localStorage.getItem('guestId');
+      if (!currentGuestId || !/^GuestUser\d{5}$/.test(currentGuestId)) {
+        const randNum = Math.floor(10000 + Math.random() * 90000);
+        currentGuestId = `GuestUser${randNum}`;
+        localStorage.setItem('guestId', currentGuestId);
+      }
+      localStorage.setItem('username', currentGuestId);
+
       setUser({
         isGuest: true,
         guestId: currentGuestId,
-        username: null,
-        avatar: 'G',
+        username: currentGuestId,
+        avatar: currentGuestId.slice(0, 2).toUpperCase(),
         joinedDate: new Date().toLocaleDateString(),
         isAdmin: false,
       });

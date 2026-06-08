@@ -399,21 +399,39 @@ export default function CommunityScreen({
   const isUserAdmin = userProfile?.role === 'admin' || userProfile?.isAdmin === true || user.isAdmin === true;
   const isUserModerator = isUserAdmin || userProfile?.role === 'moderator';
 
-  // Helper: Reputation and Rank Calculation dynamically
+  // Helper: Reputation and Rank Calculation dynamically (Optimized to linear complexity)
   const reputationMap = useMemo(() => {
     const map: Record<string, { points: number; rank: string; color: string; bg: string }> = {};
 
-    // 1. Initialize for users list
+    // Pre-calculate lookup index for fast queries
+    const postsByUser: Record<string, typeof posts> = {};
+    posts.forEach(p => {
+      if (p.userId) {
+        if (!postsByUser[p.userId]) {
+          postsByUser[p.userId] = [];
+        }
+        postsByUser[p.userId].push(p);
+      }
+    });
+
+    const commentCountByUser: Record<string, number> = {};
+    allComments.forEach(c => {
+      if (c.userId) {
+        commentCountByUser[c.userId] = (commentCountByUser[c.userId] || 0) + 1;
+      }
+    });
+
+    // Initialize for users list
     usersList.forEach(u => {
       const uid = u.userId || u.uid;
       if (!uid) return;
 
-      // Filter all posts by this user
-      const userPosts = posts.filter(p => p.userId === uid);
+      // Filter all posts by this user using dictionary lookup
+      const userPosts = postsByUser[uid] || [];
       const likesCount = userPosts.reduce((acc, p) => acc + (p.likedBy?.length || p.upvotes || 0), 0);
       const dislikesCount = userPosts.reduce((acc, p) => acc + (p.dislikedBy?.length || p.downvotes || 0), 0);
       const guesses = u.correctGuesses || 0;
-      const commentsPosted = allComments.filter(c => c.userId === uid).length;
+      const commentsPosted = commentCountByUser[uid] || 0;
       const penalties = u.penaltiesCount || 0;
 
       // Score Formula
@@ -523,7 +541,7 @@ export default function CommunityScreen({
       category: newCategory,
       type: 'discussion',
       userId: myUid,
-      username: user.username || 'User_' + myUid.slice(0, 4),
+      username: user.username || myUid,
       userAvatar: user.avatar || 'FC',
       upvotes: 0,
       downvotes: 0,
@@ -727,10 +745,14 @@ export default function CommunityScreen({
         await deleteDoc(doc(db, 'comments', com.id));
       }
 
-      // 2. Clear any associated reports
+      // 2. Clear any associated reports (handled gracefully if user has no report-delete permissions)
       const assocReports = reportsList.filter(r => r.targetId === postId);
       for (const rep of assocReports) {
-        await deleteDoc(doc(db, 'reports', rep.reportId));
+        try {
+          await deleteDoc(doc(db, 'reports', rep.reportId));
+        } catch (reportErr) {
+          console.warn("Could not clean up report (non-admin):", reportErr);
+        }
       }
 
       // 3. Delete original post document
@@ -770,7 +792,7 @@ export default function CommunityScreen({
       commentId,
       characterId: postId,
       userId: myUid,
-      username: user.username || 'User_' + myUid.slice(0, 4),
+      username: user.username || myUid,
       text: trimmedText,
       replyToUsername: replyToUsername || null,
       timestamp: Date.now(),
@@ -890,6 +912,10 @@ export default function CommunityScreen({
       triggerNotification("Banned users cannot edit content.", true);
       return;
     }
+    if (isGuest) {
+      triggerNotification("Guest sessions cannot edit comments.", true);
+      return;
+    }
 
     try {
       await updateDoc(doc(db, 'comments', commentId), {
@@ -907,6 +933,10 @@ export default function CommunityScreen({
 
   // Delete Comment (Cascade removes or simple flags)
   const executeDeleteComment = async (commentId: string, parentPostId: string | undefined) => {
+    if (isGuest) {
+      triggerNotification("Guest sessions cannot delete comments.", true);
+      return;
+    }
     try {
       // Delete the original comment
       await deleteDoc(doc(db, 'comments', commentId));
@@ -922,10 +952,14 @@ export default function CommunityScreen({
         }
       }
 
-      // Clear matching reports
+      // Clear matching reports (handled gracefully if user has no report-delete permissions)
       const asReports = reportsList.filter(r => r.targetId === commentId);
       for (const r of asReports) {
-        await deleteDoc(doc(db, 'reports', r.reportId));
+        try {
+          await deleteDoc(doc(db, 'reports', r.reportId));
+        } catch (reportErr) {
+          console.warn("Could not clean up report (non-admin):", reportErr);
+        }
       }
 
       setDeletingItem(null);
@@ -1270,13 +1304,13 @@ export default function CommunityScreen({
             <button
               type="button"
               onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)}
-              className="lg:hidden w-full flex items-center justify-between p-4 bg-gradient-to-r from-zinc-900 to-zinc-950 border border-zinc-805/80 rounded-2xl text-xs font-bold uppercase text-zinc-100 shadow-lg mb-1 cursor-pointer select-none"
+              className="lg:hidden w-full flex items-center justify-between p-4 bg-gradient-to-r from-zinc-900 to-zinc-950 border border-zinc-800 rounded-2xl text-xs font-bold uppercase text-zinc-100 shadow-lg mb-1 cursor-pointer select-none"
             >
               <span className="flex items-center gap-2">
                 <SlidersHorizontal className="w-4 h-4 text-amber-500" />
                 <span>Refine Arena Feed</span>
                 {(selectedCategory || searchQuery.trim()) && (
-                  <span className="w-2 h-2 rounded-full bg-amber-505 animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                 )}
               </span>
               <div className="flex items-center gap-2">
@@ -1291,7 +1325,7 @@ export default function CommunityScreen({
               
               {/* Search Input Card */}
               <div className="p-4 bg-zinc-950/80 border border-zinc-900/60 rounded-2xl shadow-xl w-full">
-                <h4 className="text-xs font-extrabold text-amber-400 mb-3 uppercase tracking-wider flex items-center gap-1.5 border-b border-zinc-900 pb-2">
+                <h4 className="text-xs font-extrabold text-[#ffa83e] mb-3 uppercase tracking-wider flex items-center gap-1.5 border-b border-zinc-900 pb-2">
                   <Search className="w-3.5 h-3.5 text-amber-500" /> Filter Debates
                 </h4>
                 <div className="relative">
@@ -1300,7 +1334,7 @@ export default function CommunityScreen({
                     placeholder="Search keywords..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full text-zinc-100 placeholder-zinc-550 text-xs bg-zinc-900 border border-zinc-800 rounded-xl py-2.5 pl-9 pr-3 focus:outline-none focus:border-amber-550 focus:ring-1 focus:ring-amber-500/10 transition-all text-left"
+                    className="w-full text-zinc-100 placeholder-zinc-500 text-xs bg-zinc-900 border border-zinc-800 rounded-xl py-2.5 pl-9 pr-3 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/10 transition-all text-left"
                   />
                   <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-3.5" />
                 </div>
@@ -2391,20 +2425,20 @@ export default function CommunityScreen({
                   
                   {/* Scrollable description box under height limits */}
                   {!isScrolled && selectedPost.description && (
-                    <div className="max-h-24 overflow-y-auto pr-2 font-sans text-xs text-zinc-350 leading-relaxed bg-zinc-950/50 border border-zinc-900 p-3 rounded-xl whitespace-pre-wrap mt-1">
+                    <div className="max-h-24 overflow-y-auto pr-2 font-sans text-xs text-zinc-300 leading-relaxed bg-zinc-950/50 border border-zinc-900 p-3 rounded-xl whitespace-pre-wrap mt-1">
                       {selectedPost.description}
                     </div>
                   )}
                   
                   {/* Interactive stats totals row */}
                   <div className={`flex items-center gap-2 text-xs text-zinc-500 flex-wrap ${isScrolled ? 'mt-0.5' : 'mt-2'}`}>
-                    <span className="bg-zinc-900/60 px-2 py-1 rounded-full border border-zinc-850/80 flex items-center gap-1 font-mono text-[9px]">
+                    <span className="bg-zinc-900/60 px-2 py-1 rounded-full border border-zinc-800/80 flex items-center gap-1 font-mono text-[9px]">
                       👍 <span className="text-zinc-300 font-bold">{selectedPost.likedBy?.length || selectedPost.upvotes || 0}</span>
                     </span>
-                    <span className="bg-zinc-900/60 px-2 py-1 rounded-full border border-zinc-850/80 flex items-center gap-1 font-mono text-[9px]">
+                    <span className="bg-zinc-900/60 px-2 py-1 rounded-full border border-zinc-800/80 flex items-center gap-1 font-mono text-[9px]">
                       👎 <span className="text-zinc-300 font-bold">{selectedPost.dislikedBy?.length || selectedPost.downvotes || 0}</span>
                     </span>
-                    <span className="bg-zinc-900/60 px-2 py-1 rounded-full border border-zinc-850/85 flex items-center gap-1 font-mono text-[9px] text-amber-400 font-extrabold ml-1">
+                    <span className="bg-zinc-900/60 px-2 py-1 rounded-full border border-zinc-800/85 flex items-center gap-1 font-mono text-[9px] text-amber-400 font-extrabold ml-1">
                       <MessageSquare className="w-2.5 h-2.5 text-amber-500" />
                       <span>{selectedPost.commentsCount || 0} discussions</span>
                     </span>
@@ -2485,7 +2519,7 @@ export default function CommunityScreen({
                               <div className={`p-3 px-4 rounded-2xl relative ${
                                 comment.reported 
                                   ? 'border border-rose-500/30 bg-rose-950/15 text-rose-300' 
-                                  : 'bg-zinc-900/60 hover:bg-zinc-900/80 text-zinc-150 transition-all duration-150'
+                                  : 'bg-zinc-900/60 hover:bg-zinc-900/80 text-zinc-200 transition-all duration-150'
                               } w-auto max-w-full shadow-sm`}>
                                 {/* Header username / rank line */}
                                 <div className="flex items-center gap-2 flex-wrap text-xs mb-1 select-none">
@@ -2505,7 +2539,7 @@ export default function CommunityScreen({
                                     {authorMeta.rank}
                                   </span>
                                   {isReply && (
-                                    <span className="text-[10px] text-zinc-550 lowercase">
+                                    <span className="text-[10px] text-zinc-500 lowercase">
                                       rep <a
                                         href={`/user/${comment.replyToUsername}`}
                                         onClick={(e) => {
@@ -2616,7 +2650,7 @@ export default function CommunityScreen({
                                     <span>•</span>
                                     <button
                                       onClick={() => setReportingItem({ id: comment.id, type: 'comment', content: comment.text })}
-                                      className="hover:underline cursor-pointer hover:text-rose-450 text-zinc-600 transition-colors"
+                                      className="hover:underline cursor-pointer hover:text-rose-400 text-zinc-500 transition-colors"
                                       title="Report Comment"
                                     >
                                       Report
@@ -2624,7 +2658,7 @@ export default function CommunityScreen({
                                   </>
                                 )}
 
-                                {(isOwner || isUserModerator) && (
+                                {((isOwner || isUserModerator) && !isGuest) && (
                                   <>
                                     <span>•</span>
                                     <div className="inline-flex items-center gap-1.5">
@@ -2634,7 +2668,7 @@ export default function CommunityScreen({
                                             setEditingCommentId(comment.id);
                                             setEditingCommentText(comment.text);
                                           }}
-                                          className="hover:underline cursor-pointer hover:text-amber-500 text-zinc-550 transition-colors"
+                                          className="hover:underline cursor-pointer hover:text-amber-500 text-zinc-500 transition-colors"
                                         >
                                           Edit
                                         </button>
@@ -2643,14 +2677,14 @@ export default function CommunityScreen({
                                       {isUserModerator && !isOwner ? (
                                         <button
                                           onClick={() => setDeletingItem({ id: comment.id, type: 'comment', parentPostId: selectedPost.threadId })}
-                                          className="hover:underline text-rose-450 cursor-pointer hover:text-rose-400 transition-colors font-bold"
+                                          className="hover:underline text-rose-400 cursor-pointer hover:text-rose-400 transition-colors font-bold"
                                         >
                                           Kill
                                         </button>
                                       ) : (
                                         <button
                                           onClick={() => setDeletingItem({ id: comment.id, type: 'comment', parentPostId: selectedPost.threadId })}
-                                          className="hover:underline cursor-pointer hover:text-rose-450 text-zinc-550 transition-colors"
+                                          className="hover:underline cursor-pointer hover:text-rose-400 text-zinc-500 transition-colors"
                                         >
                                           Delete
                                         </button>
