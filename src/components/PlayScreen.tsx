@@ -948,6 +948,14 @@ export default function PlayScreen({
                           {leftChar.category}
                         </span>
                       </div>
+                      {leftChar.universe && (
+                        <div className="bg-zinc-950/85 backdrop-blur-md px-1 md:px-3 py-0.5 md:py-[5px] rounded-full border border-white/20 flex items-center gap-0.5 md:gap-1.5 shadow-lg max-w-[55px] xs:max-w-[75px] md:max-w-none" title={`Club: ${leftChar.universe}`}>
+                          <span className="text-[8px] md:text-sm leading-none flex-shrink-0 select-none">🛡️</span>
+                          <span className="text-[6.5px] xs:text-[7.5px] md:text-[11px] font-bold text-zinc-300 truncate tracking-wide">
+                            {leftChar.universe}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="absolute bottom-1 md:bottom-4 left-2 md:left-4 right-2 md:right-4 z-20 text-center select-none pointer-events-none">
@@ -1034,6 +1042,14 @@ export default function PlayScreen({
                           {rightChar.category}
                         </span>
                       </div>
+                      {rightChar.universe && (
+                        <div className="bg-zinc-950/85 backdrop-blur-md px-1 md:px-3 py-0.5 md:py-[5px] rounded-full border border-white/20 flex items-center gap-0.5 md:gap-1.5 shadow-lg max-w-[55px] xs:max-w-[75px] md:max-w-none" title={`Club: ${rightChar.universe}`}>
+                          <span className="text-[8px] md:text-sm leading-none flex-shrink-0 select-none">🛡️</span>
+                          <span className="text-[6.5px] xs:text-[7.5px] md:text-[11px] font-bold text-zinc-300 truncate tracking-wide">
+                            {rightChar.universe}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="absolute bottom-1 md:bottom-4 left-2 md:left-4 right-2 md:right-4 z-20 text-center select-none pointer-events-none">
