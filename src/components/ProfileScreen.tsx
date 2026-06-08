@@ -267,6 +267,88 @@ export default function ProfileScreen({
     return getLevelProgress(activeStats.correctGuesses || 0);
   }, [activeStats.correctGuesses]);
 
+  if (user.isGuest && !viewedProfile) {
+    return (
+      <div className="relative min-h-screen pt-24 pb-12 px-4 md:px-8 max-w-md mx-auto flex flex-col justify-center">
+        <div className="bg-card rounded-3xl border border-primary-border p-8 text-center shadow-xl relative overflow-hidden">
+          {/* Accent decoration glow */}
+          <div className="absolute top-0 right-0 w-36 h-36 bg-[#E8472A]/5 blur-3xl rounded-full" />
+          
+          <div className="w-16 h-16 rounded-full bg-secondary-surface border-2 border-dashed border-[#E8472A]/60 flex items-center justify-center mx-auto mb-6">
+            <LogIn className="w-6 h-6 text-[#E8472A]" />
+          </div>
+
+          <h2 className="font-display text-2xl text-primary font-bold mb-3">Welcome to GoalSpire</h2>
+          <p className="font-sans text-xs text-secondary mb-8 leading-relaxed">
+            Please sign in or create an account to access game statistics, customizable profiles, forums, and your community dashboard.
+          </p>
+
+          <button
+            id="google_signin_btn"
+            onClick={async () => {
+              setIsAuthPending(true);
+              try {
+                const res = await onLogin();
+                if (res && !res.success) {
+                  setPopupAlert({ message: res.error || 'Google Authentication failed. Please try again.' });
+                }
+              } catch (err: any) {
+                setPopupAlert({ message: err?.message || 'Verification error occurred. Please try again.' });
+              } finally {
+                setIsAuthPending(false);
+              }
+            }}
+            disabled={isAuthPending}
+            className="w-full bg-[#E8472A] hover:bg-[#ff5d42] active:scale-95 text-white text-xs font-sans font-bold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>{isAuthPending ? 'Signing in...' : 'Sign in with Google'}</span>
+          </button>
+        </div>
+
+        {/* Floating alert error popup for login errors */}
+        <AnimatePresence>
+          {popupAlert && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/30 z-[100] flex items-center justify-center p-4 backdrop-blur-[2px]"
+            >
+              <motion.div
+                initial={{ scale: 0.94, y: 8 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.94, y: 8 }}
+                className="bg-zinc-950/45 border border-white/10 backdrop-blur-md max-w-[240px] w-full rounded-xl p-4 text-center shadow-xl relative overflow-hidden flex flex-col items-center justify-center"
+              >
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-red-500/80 via-orange-400/80 to-amber-300/80 opacity-90" />
+                
+                <div className="w-8 h-8 rounded-full bg-red-950/30 text-red-400 flex items-center justify-center mb-2.5 border border-red-500/20 shadow-inner flex-shrink-0">
+                  <ShieldAlert className="w-4 h-4 opacity-90" />
+                </div>
+                
+                <h3 className="font-display text-xs font-semibold text-zinc-100 tracking-wide mb-1 flex-shrink-0">
+                  Notice Info
+                </h3>
+                
+                <p className="font-sans text-[10px] text-zinc-300 leading-normal mb-3 w-full break-words whitespace-normal">
+                  {popupAlert.message}
+                </p>
+                
+                <button
+                  onClick={() => setPopupAlert(null)}
+                  className="w-full bg-red-500/10 hover:bg-red-500/15 text-red-400 border border-red-500/20 py-1.5 font-sans font-medium text-[10px] rounded active:scale-95 transition-all cursor-pointer flex-shrink-0"
+                >
+                  Understood
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen pt-24 pb-12 px-4 md:px-8 max-w-4xl mx-auto flex flex-col justify-between">
       

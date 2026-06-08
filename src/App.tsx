@@ -309,24 +309,30 @@ export default function App() {
     }
   };
 
-  const generateUniqueUsername = async (baseName: string): Promise<string> => {
-    let clean = baseName.trim().replace(/[^a-zA-Z0-9_]/g, '_');
-    if (clean.length < 3) {
-      clean = 'Player_' + clean;
-    }
-    if (clean.length > 15) {
-      clean = clean.slice(0, 15);
-    }
-    
-    let candidate = clean;
-    let isTaken = await checkIfUsernameTaken(candidate, null);
+  const generateUniqueUsername = async (): Promise<string> => {
+    const prefixes = ['Striker_No9', 'Player', 'Fan', 'Winger', 'Midfielder', 'Forward', 'Goalkeeper', 'Defender'];
     let attempts = 0;
+    let isUnique = false;
+    let candidate = '';
     
-    while (isTaken && attempts < 20) {
+    while (!isUnique && attempts < 50) {
       attempts++;
-      const suffix = '_' + Math.floor(100 + Math.random() * 900);
-      candidate = clean.slice(0, 20 - suffix.length) + suffix;
-      isTaken = await checkIfUsernameTaken(candidate, null);
+      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      let suffix = '';
+      if (prefix === 'Striker_No9') {
+        suffix = '_' + Math.floor(100 + Math.random() * 900);
+      } else {
+        suffix = '_' + Math.floor(10000 + Math.random() * 90000);
+      }
+      candidate = `${prefix}${suffix}`;
+      const isTaken = await checkIfUsernameTaken(candidate, null);
+      if (!isTaken) {
+        isUnique = true;
+      }
+    }
+    
+    if (!isUnique) {
+      candidate = 'Player_' + Math.floor(100000 + Math.random() * 900000);
     }
     return candidate;
   };
@@ -338,7 +344,6 @@ export default function App() {
     try {
       const docSnap = await getDoc(userRef);
       const joined = new Date().toLocaleDateString();
-      const defaultAvatar = firebaseUser.displayName?.slice(0, 2).toUpperCase() || 'P';
       const isUserAdmin = userId === 'W97e8GcIGObrIiM1G5cRZV4BF3Z2' || 
                           userId === '5V7for1aVtZhIjWCNR4vDfHllOA3' || 
                           firebaseUser.email === 'almahmudemon00@gmail.com';
@@ -346,12 +351,21 @@ export default function App() {
       if (docSnap.exists()) {
         localStorage.removeItem('pending_claimed_username');
         const data = docSnap.data();
+        let uniqueUsername = data.username;
+        
+        if (!uniqueUsername) {
+          uniqueUsername = await generateUniqueUsername();
+        }
+        
         const mergedBest = Math.max(stats.bestStreak, data.bestStreak || 0);
         const mergedPlayed = Math.max(stats.gamesPlayed, data.gamesPlayed || 0);
         const mergedCorrect = Math.max(stats.correctGuesses, data.correctGuesses || 0);
         const mergedTotal = Math.max(stats.totalGuesses, data.totalGuesses || 0);
         
+        const defaultAvatar = uniqueUsername.slice(0, 2).toUpperCase() || 'P';
+        
         await updateDoc(userRef, {
+          username: uniqueUsername,
           bestStreak: mergedBest,
           gamesPlayed: mergedPlayed,
           correctGuesses: mergedCorrect,
@@ -364,7 +378,7 @@ export default function App() {
           uid: userId,
           isGuest: false,
           guestId: 'Guest_' + userId.slice(0, 4),
-          username: data.username || firebaseUser.displayName || 'Player_' + userId.slice(0, 4),
+          username: uniqueUsername,
           avatar: data.avatar || defaultAvatar,
           joinedDate: data.joinedDate || joined,
           isAdmin: isUserAdmin,
@@ -387,22 +401,12 @@ export default function App() {
           favoriteUniverse: data.favoriteUniverse || 'Goals',
         });
       } else {
-        const pendingClaimed = localStorage.getItem('pending_claimed_username');
-        let uniqueUsername = '';
-        if (pendingClaimed) {
-          const isTaken = await checkIfUsernameTaken(pendingClaimed, null);
-          if (!isTaken) {
-            uniqueUsername = pendingClaimed;
-          }
-          localStorage.removeItem('pending_claimed_username');
-        }
+        localStorage.removeItem('pending_claimed_username');
         
-        if (!uniqueUsername) {
-          const baseName = firebaseUser.displayName || 'Player_' + userId.slice(0, 4);
-          uniqueUsername = await generateUniqueUsername(baseName);
-        }
+        const uniqueUsername = await generateUniqueUsername();
+        const defaultAvatar = uniqueUsername.slice(0, 2).toUpperCase() || 'P';
         
-         const record = {
+        const record = {
           userId,
           username: uniqueUsername,
           avatar: defaultAvatar,

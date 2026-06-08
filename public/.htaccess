@@ -1,0 +1,13 @@
+# Apache & LiteSpeed Rewrites for Single Page Application (SPA)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  
+  # Allow direct access to index.html
+  RewriteRule ^index\.html$ - [L]
+  
+  # If requested path is NOT an existing file or directory, route it to index.html
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>

@@ -824,14 +824,7 @@ export default function PlayScreen({
               Import custom football ratings from Google Sheets published to the web. 
               The CSV schema requires: <code className="bg-secondary-surface px-1 py-0.5 rounded text-primary">Player Name, Country, Club, Goals, Assists, G+A, Image_url</code> as header tags.
             </p>
-            <form onSubmit={handleSheetSubmit} className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="url"
-                value={tempSheetUrl}
-                onChange={(e) => setTempSheetUrl(e.target.value)}
-                placeholder="Paste CSV / Google sheet url here"
-                className="flex-1 bg-secondary-surface border border-primary-border text-primary rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-[#E8472A] font-mono"
-              />
+            <form onSubmit={handleSheetSubmit} className="flex flex-col gap-2">
               <div className="flex gap-2">
                 <button
                   type="submit"
@@ -851,6 +844,13 @@ export default function PlayScreen({
                   </button>
                 )}
               </div>
+              <input
+                type="url"
+                value={tempSheetUrl}
+                onChange={(e) => setTempSheetUrl(e.target.value)}
+                placeholder="Paste CSV / Google sheet url here"
+                className="w-full bg-secondary-surface border border-primary-border text-primary rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-[#E8472A] font-mono"
+              />
             </form>
             {sheetMessage && (
               <p className={`text-[11px] mt-1.5 font-semibold flex items-center ${sheetMessage.error ? 'text-red' : 'text-green'}`}>

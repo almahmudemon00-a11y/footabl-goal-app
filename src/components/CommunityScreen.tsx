@@ -2681,6 +2681,14 @@ export default function CommunityScreen({
                   </div>
                 ) : (
                   <form onSubmit={(e) => handleAddRootComment(e, selectedPost.threadId)} className="flex flex-col gap-2">
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-gradient-to-tr from-amber-500 to-amber-600 text-zinc-950 font-black rounded-lg text-[11px] flex items-center gap-1 hover:brightness-110 active:scale-98 transition-all cursor-pointer"
+                      >
+                        <Send className="w-3 h-3" /> Submit Comment
+                      </button>
+                    </div>
                     <textarea
                       ref={commentInputRef}
                       placeholder="Contribute text insight to this debate pool... (use @username to reply)"
@@ -2691,14 +2699,6 @@ export default function CommunityScreen({
                       rows={2}
                       maxLength={1500}
                     />
-                    <div className="flex justify-end">
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-gradient-to-tr from-amber-500 to-amber-600 text-zinc-950 font-black rounded-lg text-[11px] flex items-center gap-1 hover:brightness-110 active:scale-98 transition-all cursor-pointer"
-                      >
-                        <Send className="w-3 h-3" /> Submit Comment
-                      </button>
-                    </div>
                   </form>
                 )}
               </div>
