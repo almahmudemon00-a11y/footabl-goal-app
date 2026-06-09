@@ -19,6 +19,7 @@ interface ProfileScreenProps {
   onLogin: () => Promise<{ success: boolean; error?: string }>;
   onLogout: () => void;
   onUpdateUsername: (newUsername: string) => Promise<boolean>;
+  onUpdateBio: (newBio: string) => Promise<boolean>;
   checkIfUsernameTaken: (usernameToCheck: string, excludeUid: string | null) => Promise<boolean>;
   searchUserByUsername: (username: string) => Promise<{ searchedUser: User; searchedStats: UserStats } | null>;
   logoUrl?: string;
@@ -32,6 +33,7 @@ export default function ProfileScreen({
   onLogin,
   onLogout,
   onUpdateUsername,
+  onUpdateBio,
   checkIfUsernameTaken,
   searchUserByUsername,
   logoUrl,
@@ -60,8 +62,31 @@ export default function ProfileScreen({
   const [editInputVal, setEditInputVal] = useState<string>(user.username || '');
   const [editError, setEditError] = useState<string | null>(null);
 
+  // Bio editing states
+  const [isEditingBio, setIsEditingBio] = useState<boolean>(false);
+  const [bioInput, setBioInput] = useState<string>('');
+
   // Taken username popup state
   const [popupAlert, setPopupAlert] = useState<{ message: string } | null>(null);
+
+  const handleBioSave = async () => {
+    const ok = await onUpdateBio(bioInput.trim());
+    if (ok) {
+      setIsEditingBio(false);
+    } else {
+      setPopupAlert({ message: 'Failed to update bio. Please try again.' });
+    }
+  };
+
+  const handleBioRemove = async () => {
+    const ok = await onUpdateBio('');
+    if (ok) {
+      setBioInput('');
+      setIsEditingBio(false);
+    } else {
+      setPopupAlert({ message: 'Failed to remove bio. Please try again.' });
+    }
+  };
 
   // Authentication in-progress pending state
   const [isAuthPending, setIsAuthPending] = useState<boolean>(false);
@@ -459,6 +484,95 @@ export default function ProfileScreen({
               </div>
             </div>
           </div>
+
+          {/* PLAYER BIO SYSTEM */}
+          {isEditingBio ? (
+            <div className="mt-6 p-4 bg-secondary-surface/20 border border-primary-border/60 rounded-2xl text-left">
+              <label className="font-sans text-[10px] font-bold text-zinc-400 block mb-1.5 uppercase tracking-wider">
+                PLAYER BIO / MOTTO
+              </label>
+              <textarea
+                value={bioInput}
+                onChange={(e) => setBioInput(e.target.value)}
+                maxLength={160}
+                placeholder="Declare your football philosophy, favorite team/players, or competitive motto..."
+                className="w-full bg-secondary-surface border border-primary-border rounded-xl px-3.5 py-2.5 text-xs text-primary focus:outline-none focus:border-[#E8472A] min-h-[80px] resize-none font-sans"
+              />
+              <div className="flex justify-between items-center mt-2.5">
+                <span className="text-[10px] text-zinc-500 font-mono">
+                  {160 - bioInput.length} characters left
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleBioSave}
+                    className="px-3.5 py-1.5 bg-[#E8472A] hover:bg-[#ff5d42] text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-md"
+                  >
+                    Save Bio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingBio(false);
+                      setBioInput(activeUser.bio || '');
+                    }}
+                    className="px-3.5 py-1.5 bg-zinc-900 border border-primary-border hover:text-white text-zinc-400 text-xs font-bold rounded-lg transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6">
+              {activeUser.bio ? (
+                <div className="p-4 bg-secondary-surface/25 border border-primary-border/40 rounded-2xl text-left relative group">
+                  <div className="flex justify-between items-center text-zinc-500 text-[9px] font-mono uppercase tracking-widest mb-1.5 select-none">
+                    <span>PLAYER BIO</span>
+                    {!viewedProfile && (
+                      <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => {
+                            setBioInput(activeUser.bio || '');
+                            setIsEditingBio(true);
+                          }}
+                          className="text-[#E8472A] hover:underline cursor-pointer bg-transparent border-none text-[9px] font-bold"
+                        >
+                          Edit
+                        </button>
+                        <span className="text-zinc-700 font-sans text-[8px]">•</span>
+                        <button
+                          onClick={handleBioRemove}
+                          className="text-zinc-400 hover:text-red hover:underline cursor-pointer bg-transparent border-none text-[9px] font-bold"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <p className="font-sans text-xs text-zinc-300 leading-relaxed italic pr-4">
+                    "{activeUser.bio}"
+                  </p>
+                </div>
+              ) : (
+                !viewedProfile && (
+                  <div className="text-left mt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBioInput('');
+                        setIsEditingBio(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 font-sans font-bold text-xs text-zinc-400 hover:text-primary transition-colors cursor-pointer bg-transparent border-none"
+                    >
+                      <Edit2 className="w-3" />
+                      <span>Add Player Bio / Motto</span>
+                    </button>
+                  </div>
+                )
+              )}
+            </div>
+          )}
 
           {/* Claim Username Info Box (If Guest Only & not viewing searched user) */}
           {user.isGuest && !viewedProfile && (

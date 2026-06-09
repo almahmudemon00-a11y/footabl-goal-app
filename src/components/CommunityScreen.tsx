@@ -32,10 +32,10 @@ import { db, auth, handleFirestoreError, OperationType } from '../firebase.ts';
 
 // Reputation & ranking categories
 const RANK_LIMITS = {
-  Legend: 250,
-  Expert: 100,
-  Analyst: 50,
-  Scout: 20
+  Legend: 1000,
+  Expert: 500,
+  Analyst: 200,
+  Scout: 50
 };
 
 const DEFAULT_CATEGORIES = [
@@ -49,7 +49,8 @@ const DEFAULT_CATEGORIES = [
   '📰 Transfers & Rumours',
   '🏟️ Club Debates',
   '🌍 International Football',
-  '🔮 Predictions'
+  '🔮 Predictions',
+  '🎁 Young Talents'
 ];
 
 interface CommunityScreenProps {
@@ -84,16 +85,100 @@ export default function CommunityScreen({
   // Categories list
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
 
-  // Firestore Data stores
-  const [posts, setPosts] = useState<Thread[]>([]);
-  
+  // Seed data from JSON
+  const [seedData, setSeedData] = useState<{
+    users: any[];
+    threads: any[];
+    comments: any[];
+  } | null>(null);
+
+  useEffect(() => {
+    fetch('/football_seed_data.json')
+      .then(res => res.json())
+      .then(data => {
+        setSeedData(data);
+      })
+      .catch(err => {
+        console.error('Failed to load community seed data:', err);
+      });
+  }, []);
+
+  // Firestore Data stores (raw collections before merge)
+  const [rawPosts, setRawPosts] = useState<Thread[]>([]);
+  const [rawUsersList, setRawUsersList] = useState<any[]>([]);
+
   // Derived from comments prop to eliminate duplicate database streams and reduce CPU/network load
-  const allComments = useMemo(() => {
+  const rawAllComments = useMemo(() => {
     if (!comments) return [];
     return Object.values(comments).flat().sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
   }, [comments]);
 
-  const [usersList, setUsersList] = useState<any[]>([]);
+  const allComments = useMemo(() => {
+    if (!seedData || !seedData.comments) return rawAllComments;
+    const merged = [...rawAllComments];
+    const rawIds = new Set(rawAllComments.map(c => c.commentId || c.id));
+    seedData.comments.forEach(c => {
+      const cid = c.commentId || c.id;
+      if (cid && !rawIds.has(cid)) {
+        merged.push({
+          ...c,
+          postId: c.postId,
+          characterId: c.characterId || c.postId,
+          userId: c.userId || c.authorId,
+          authorId: c.authorId || c.userId,
+          content: c.content || c.text,
+          text: c.text || c.content,
+        } as any);
+      }
+    });
+    return merged.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  }, [rawAllComments, seedData]);
+
+  // Merge Firestore raw data with comprehensive football_seed_data.json static fields
+  // Dynamically calculate commentsCount from allComments to guarantee perfect synchronization
+  const posts = useMemo(() => {
+    const threadCommentsCountMap: Record<string, number> = {};
+    allComments.forEach(c => {
+      const tid = c.postId || c.characterId;
+      if (tid) {
+        threadCommentsCountMap[tid] = (threadCommentsCountMap[tid] || 0) + 1;
+      }
+    });
+
+    const merged = [...rawPosts];
+    if (seedData && seedData.threads) {
+      const rawIds = new Set(rawPosts.map(p => p.threadId));
+      seedData.threads.forEach(t => {
+        if (!rawIds.has(t.threadId)) {
+          merged.push(t as any);
+        }
+      });
+    }
+
+    const finalPosts = merged.map(p => ({
+      ...p,
+      commentsCount: threadCommentsCountMap[p.threadId] || 0
+    }));
+
+    return finalPosts.sort((a, b) => b.timestamp - a.timestamp);
+  }, [rawPosts, seedData, allComments]);
+
+  const usersList = useMemo(() => {
+    if (!seedData || !seedData.users) return rawUsersList;
+    const merged = [...rawUsersList];
+    const rawIds = new Set(rawUsersList.map(u => u.userId || u.uid));
+    seedData.users.forEach(u => {
+      const uid = u.userId || u.uid;
+      if (uid && !rawIds.has(uid)) {
+        merged.push({
+          ...u,
+          avatar: u.userAvatar || u.avatar || '⚽'
+        });
+      }
+    });
+    return merged;
+  }, [rawUsersList, seedData]);
+
   const [reportsList, setReportsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -323,7 +408,7 @@ export default function CommunityScreen({
       snap.forEach((docSnap) => {
         list.push(docSnap.data() as Thread);
       });
-      setPosts(list);
+      setRawPosts(list);
       setIsLoading(false);
     }, (err) => {
       console.error("Posts loading error:", err);
@@ -343,7 +428,7 @@ export default function CommunityScreen({
       snap.forEach((docSnap) => {
         list.push(docSnap.data());
       });
-      setUsersList(list);
+      setRawUsersList(list);
     }, (err) => {
       console.error("Users list loading error:", err);
     });
@@ -456,7 +541,7 @@ export default function CommunityScreen({
       const penalties = u.penaltiesCount || 0;
 
       // Score Formula
-      const score = Math.max(0, (likesCount * 5) + (guesses * 10) + (commentsPosted * 5) - (dislikesCount * 2) - (penalties * 20));
+      const score = Math.max(0, (likesCount * 5) + Math.floor(guesses * 1.5) + (commentsPosted * 2) - (dislikesCount * 2) - (penalties * 20));
 
       let rank = 'Rookie';
       let color = 'text-zinc-400 border-zinc-500/20';
@@ -2462,7 +2547,7 @@ export default function CommunityScreen({
                     </span>
                     <span className="bg-zinc-900/60 px-2 py-1 rounded-full border border-zinc-800/85 flex items-center gap-1 font-mono text-[9px] text-amber-400 font-extrabold ml-1">
                       <MessageSquare className="w-2.5 h-2.5 text-amber-500" />
-                      <span>{selectedPost.commentsCount || 0} discussions</span>
+                      <span>{allComments.filter(c => c.postId === selectedPost.threadId || c.characterId === selectedPost.threadId).length} discussions</span>
                     </span>
                     {isScrolled && (
                       <span className="ml-auto text-[9px] text-zinc-500">

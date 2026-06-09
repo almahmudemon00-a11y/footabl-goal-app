@@ -83,4 +83,5 @@ export interface User {
   avatar: string | null;
   joinedDate: string;
   isAdmin?: boolean;
+  bio?: string;
 }

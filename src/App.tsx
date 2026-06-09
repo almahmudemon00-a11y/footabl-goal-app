@@ -5,7 +5,7 @@
  * GoalSpire Game Platform - Deploy Trigger Comment
  */
 
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo } from 'react';
 import { Sparkles, Medal, User, Flame, Moon, Sun, MessageSquare, Compass, Settings, CircleDot, Trophy } from 'lucide-react';
 import { Character, Comment, User as UserType, UserStats } from './types.ts';
 import { DEFAULT_CHARACTERS, PRE_SEEDED_COMMENTS } from './data.ts';
@@ -248,6 +248,76 @@ export default function App() {
   // Live Comments debate index
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
 
+  // Football Community Seed Data & Live Thread subscriptions for indexing Player threads
+  const [seedData, setSeedData] = useState<{
+    users: any[];
+    threads: any[];
+    comments: any[];
+  } | null>(null);
+  const [rawThreads, setRawThreads] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/football_seed_data.json')
+      .then(res => res.json())
+      .then(data => {
+        setSeedData(data);
+      })
+      .catch(err => {
+        console.error('Failed to load community seed.json in App.tsx:', err);
+      });
+  }, []);
+
+  useEffect(() => {
+    const qPosts = query(collection(db, 'threads'), orderBy('timestamp', 'desc'));
+    const unsubPosts = onSnapshot(qPosts, (snap) => {
+      const list: any[] = [];
+      snap.forEach((docSnap) => {
+        list.push(docSnap.data());
+      });
+      setRawThreads(list);
+    }, (err) => {
+      console.error("Error loading threads in App.tsx:", err);
+    });
+    return () => unsubPosts();
+  }, []);
+
+  const mergedThreads = useMemo(() => {
+    if (!seedData || !seedData.threads) return rawThreads;
+    const merged = [...rawThreads];
+    const rawIds = new Set(rawThreads.map(p => p.threadId));
+    seedData.threads.forEach(t => {
+      if (!rawIds.has(t.threadId)) {
+        merged.push(t);
+      }
+    });
+
+    const counts: Record<string, number> = {};
+
+    (Object.entries(comments) as [string, any[]][]).forEach(([key, list]) => {
+      counts[key] = (counts[key] || 0) + (list?.length || 0);
+    });
+
+    const currentCommentIds = new Set((Object.values(comments) as any[][]).flat().map(c => c.id || c.commentId));
+    if (seedData && seedData.comments) {
+      seedData.comments.forEach(c => {
+        const cid = c.commentId || c.id;
+        if (cid && !currentCommentIds.has(cid)) {
+          const pid = c.postId || c.characterId;
+          if (pid) {
+            counts[pid] = (counts[pid] || 0) + 1;
+          }
+        }
+      });
+    }
+
+    const enriched = merged.map(p => ({
+      ...p,
+      commentsCount: counts[p.threadId] || 0
+    }));
+
+    return enriched.sort((a, b) => b.timestamp - a.timestamp);
+  }, [rawThreads, seedData, comments]);
+
   // Helpers to check and generate guaranteed unique username
   const checkIfUsernameTaken = async (usernameToCheck: string, excludeUid: string | null): Promise<boolean> => {
     try {
@@ -298,6 +368,7 @@ export default function App() {
         avatar: foundDoc.avatar || '🏆',
         joinedDate: foundDoc.joinedDate || 'Unknown',
         isAdmin: !!foundDoc.isAdmin,
+        bio: foundDoc.bio || '',
       };
       
       const searchedStats: UserStats = {
@@ -388,6 +459,7 @@ export default function App() {
           avatar: data.avatar || defaultAvatar,
           joinedDate: data.joinedDate || joined,
           isAdmin: isUserAdmin,
+          bio: data.bio || '',
         };
         
         // Save to local storage for persistence across reloads/offline scenarios
@@ -397,6 +469,7 @@ export default function App() {
         localStorage.setItem('gamesPlayed', mergedPlayed.toString());
         localStorage.setItem('correctGuesses', mergedCorrect.toString());
         localStorage.setItem('totalGuesses', mergedTotal.toString());
+        localStorage.setItem('bio', finalUser.bio);
 
         setUser(finalUser);
         setStats({
@@ -436,6 +509,7 @@ export default function App() {
         localStorage.setItem('gamesPlayed', record.gamesPlayed.toString());
         localStorage.setItem('correctGuesses', record.correctGuesses.toString());
         localStorage.setItem('totalGuesses', record.totalGuesses.toString());
+        localStorage.setItem('bio', '');
 
         setUser({
           uid: userId,
@@ -445,6 +519,7 @@ export default function App() {
           avatar: defaultAvatar,
           joinedDate: joined,
           isAdmin: isUserAdmin,
+          bio: '',
         });
         
         setStats({
@@ -579,6 +654,7 @@ export default function App() {
           avatar: savedAvatar || (savedUsername ? savedUsername.slice(0, 2).toUpperCase() : 'GU'),
           joinedDate: localStorage.getItem('joined_date') || new Date().toLocaleDateString(),
           isAdmin: false,
+          bio: localStorage.getItem('bio') || '',
         });
 
         const loginGoals = parseInt(localStorage.getItem('mode_goals') || '0', 10);
@@ -1110,6 +1186,27 @@ export default function App() {
     }
   };
 
+  const handleUpdateBio = async (newBio: string): Promise<boolean> => {
+    try {
+      localStorage.setItem('bio', newBio);
+      setUser(prev => ({
+        ...prev,
+        bio: newBio,
+      }));
+      if (auth.currentUser) {
+        const userRef = doc(db, 'users', auth.currentUser.uid);
+        await updateDoc(userRef, {
+          bio: newBio,
+          updatedAt: serverTimestamp()
+        });
+      }
+      return true;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`);
+      return false;
+    }
+  };
+
   // Real database dynamic comment injection
   const handleAddComment = async (charId: string, text: string, replyToCommentId?: string) => {
     const commenterName = user.username || user.guestId;
@@ -1432,7 +1529,7 @@ export default function App() {
           <PlayerScreen
             playerId={currentPath.split('/player/')[1]}
             characters={characters}
-            threads={[]} // Will fetch natively on load inside PlayerScreen
+            threads={mergedThreads}
             onNavigateToPost={(pId) => navigateTo(`/post/${pId}`)}
             onNavigateToPlayer={(pId) => navigateTo(`/player/${pId}`)}
             onBack={() => navigateTo('/')}
@@ -1479,6 +1576,7 @@ export default function App() {
                 onLogin={handleLogin}
                 onLogout={handleLogout}
                 onUpdateUsername={handleUpdateUsername}
+                onUpdateBio={handleUpdateBio}
                 checkIfUsernameTaken={checkIfUsernameTaken}
                 searchUserByUsername={searchUserByUsername}
                 logoUrl={logoUrl}
