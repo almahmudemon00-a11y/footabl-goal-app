@@ -1181,7 +1181,11 @@ export default function App() {
         return false;
       }
 
-      const avatar = newName.slice(0, 2).toUpperCase();
+      // Preserve any emoji avatar if they have set one
+      const prevAvatar = user.avatar || '';
+      const isEmoji = prevAvatar && (prevAvatar.length <= 4 && !/^[a-zA-Z0-9]{2}$/.test(prevAvatar));
+      const avatar = isEmoji ? prevAvatar : newName.slice(0, 2).toUpperCase();
+      
       localStorage.setItem('username', newName);
       localStorage.setItem('avatar', avatar);
       
@@ -1217,6 +1221,27 @@ export default function App() {
         const userRef = doc(db, 'users', auth.currentUser.uid);
         await updateDoc(userRef, {
           bio: newBio,
+          updatedAt: serverTimestamp()
+        });
+      }
+      return true;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`);
+      return false;
+    }
+  };
+
+  const handleUpdateAvatar = async (newAvatar: string): Promise<boolean> => {
+    try {
+      localStorage.setItem('avatar', newAvatar);
+      setUser(prev => ({
+        ...prev,
+        avatar: newAvatar,
+      }));
+      if (auth.currentUser) {
+        const userRef = doc(db, 'users', auth.currentUser.uid);
+        await updateDoc(userRef, {
+          avatar: newAvatar,
           updatedAt: serverTimestamp()
         });
       }
@@ -1601,6 +1626,7 @@ export default function App() {
                 searchUserByUsername={searchUserByUsername}
                 logoUrl={logoUrl}
                 initialViewedUsername={viewedUserUsername}
+                onUpdateAvatar={handleUpdateAvatar}
               />
             )}
 

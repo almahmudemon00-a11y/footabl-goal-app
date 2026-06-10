@@ -24,6 +24,7 @@ interface ProfileScreenProps {
   searchUserByUsername: (username: string) => Promise<{ searchedUser: User; searchedStats: UserStats } | null>;
   logoUrl?: string;
   initialViewedUsername?: string;
+  onUpdateAvatar?: (newAvatar: string) => Promise<boolean>;
 }
 
 export default function ProfileScreen({
@@ -37,7 +38,8 @@ export default function ProfileScreen({
   checkIfUsernameTaken,
   searchUserByUsername,
   logoUrl,
-  initialViewedUsername
+  initialViewedUsername,
+  onUpdateAvatar
 }: ProfileScreenProps) {
   // Tabs inside Profile: 'stats' or 'my-comments'
   const [activeSubTab, setActiveSubTab] = useState<'stats' | 'comments'>('stats');
@@ -68,6 +70,39 @@ export default function ProfileScreen({
 
   // Taken username popup state
   const [popupAlert, setPopupAlert] = useState<{ message: string } | null>(null);
+
+  // Avatar editing Modal state
+  const [showAvatarModal, setShowAvatarModal] = useState<boolean>(false);
+  const [customEmojiInput, setCustomEmojiInput] = useState<string>('');
+
+  const handleSaveAvatar = async (selectedEmoji: string) => {
+    const cleanEmoji = selectedEmoji.trim();
+    if (!cleanEmoji) {
+      setPopupAlert({ message: 'Please select or enter an emoji.' });
+      return;
+    }
+    
+    // Quick validation to prevent regular text
+    if (/^[a-zA-Z0-9]+$/.test(cleanEmoji)) {
+      setPopupAlert({ message: 'Please enter or select a valid emoji only, not plain text.' });
+      return;
+    }
+
+    const containsNormalText = /[a-zA-Z0-9]{3,}/.test(cleanEmoji);
+    if (containsNormalText) {
+      setPopupAlert({ message: 'Plain text is not allowed as an emoji avatar.' });
+      return;
+    }
+
+    if (onUpdateAvatar) {
+      const ok = await onUpdateAvatar(cleanEmoji);
+      if (ok) {
+        setShowAvatarModal(false);
+      } else {
+        setPopupAlert({ message: 'Failed to update avatar. Please try again.' });
+      }
+    }
+  };
 
   const handleBioSave = async () => {
     const ok = await onUpdateBio(bioInput.trim());
@@ -442,11 +477,25 @@ export default function ProfileScreen({
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 pb-6 border-b border-primary-border/40">
             {/* User Profile Details */}
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-secondary-surface border-2 border-[#E8472A] flex items-center justify-center text-primary font-display font-bold text-2xl relative shadow-md">
+              <div 
+                className={`w-16 h-16 rounded-full bg-secondary-surface border-2 border-[#E8472A] flex items-center justify-center text-primary font-display font-bold text-2xl relative shadow-md transition-all ${!viewedProfile ? 'hover:scale-105 hover:border-white cursor-pointer group/avatar' : ''}`}
+                onClick={() => {
+                  if (!viewedProfile) {
+                    setCustomEmojiInput(activeUser.avatar || '🏆');
+                    setShowAvatarModal(true);
+                  }
+                }}
+                title={!viewedProfile ? 'Click to change profile emoji' : undefined}
+              >
                 {activeUser.avatar ? (
-                  <span className="text-3xl select-none">{activeUser.avatar}</span>
+                  <span className="text-3xl select-none leading-none">{activeUser.avatar}</span>
                 ) : (
-                  <span className="text-secondary select-none">🏆</span>
+                  <span className="text-secondary select-none text-3xl leading-none">🏆</span>
+                )}
+                {!viewedProfile && (
+                  <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                    <Edit2 className="w-4 h-4 text-white" />
+                  </div>
                 )}
                 <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#E8472A] border-2 border-card flex items-center justify-center text-[10px] text-white">
                   {activeUser.isGuest ? 'G' : '✓'}
@@ -475,6 +524,20 @@ export default function ProfileScreen({
                       <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
                       USER
                     </span>
+                  )}
+
+                  {!viewedProfile && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomEmojiInput(activeUser.avatar || '🏆');
+                        setShowAvatarModal(true);
+                      }}
+                      className="inline-flex items-center gap-1 font-sans text-[10px] font-bold text-zinc-300 hover:text-white transition-all cursor-pointer bg-white/5 hover:bg-[#E8472A]/25 border border-white/10 hover:border-[#E8472A]/40 px-2.5 py-1 rounded-xl shadow-sm"
+                    >
+                      <Edit2 className="w-2.5 h-2.5" />
+                      <span>Change Emoji</span>
+                    </button>
                   )}
                 </div>
                 <p className="font-sans text-xs text-secondary mt-1 flex items-center gap-1.5 text-left">
@@ -956,6 +1019,116 @@ export default function ProfileScreen({
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* UPDATE AVATAR / PROFILE EMOJI MODAL */}
+      <AnimatePresence>
+        {showAvatarModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-zinc-950/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-[#17171C] border border-white/10 rounded-2xl p-6 max-w-md w-full relative text-left shadow-2xl shadow-black"
+            >
+              <div className="flex items-center gap-2.5 mb-4">
+                <span className="text-2xl">🎨</span>
+                <div>
+                  <h3 className="font-display text-lg text-primary font-bold">Customize Profile Emoji</h3>
+                  <p className="font-sans text-[11px] text-secondary">Choose a recommended sport/badge or type ANY emoji</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {/* Visual Preview */}
+                <div className="flex justify-center py-4 bg-secondary-surface/40 border border-primary-border/60 rounded-xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-[#E8472A]/5 blur-xl rounded-full" />
+                  <div className="w-16 h-16 rounded-full bg-secondary-surface border-2 border-[#E8472A] flex items-center justify-center text-primary font-display font-bold text-3xl shadow-md">
+                    <span className="select-none">{customEmojiInput || '🏆'}</span>
+                  </div>
+                </div>
+
+                {/* Popular Sport/Profile Emojis Grid */}
+                <div>
+                  <label className="font-sans text-[10px] font-bold text-zinc-400 block mb-2 uppercase tracking-wider">
+                    POPULAR EMOJIS & SPORTS BADGES
+                  </label>
+                  <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
+                    {[
+                      '⚽', '🏆', '🏟️', '🧠', '👑', '⭐', '🧤', '👟',
+                      '🏃', '🥅', '🧢', '🕶️', '🔥', '⚡', '🧣', '🍺',
+                      '🍕', '🍟', '🎨', '👔', '🌎', '🦁', '🦉', '🐉'
+                    ].map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setCustomEmojiInput(emoji)}
+                        className={`w-10 h-10 flex items-center justify-center rounded-xl bg-secondary-surface border hover:border-[#E8472A] text-xl transition-all cursor-pointer ${
+                          customEmojiInput === emoji ? 'border-[#E8472A] bg-[#E8472A]/10 scale-105' : 'border-primary-border'
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dynamic custom single emoji input field */}
+                <div>
+                  <label className="font-sans text-[10px] font-bold text-zinc-400 block mb-1.5 uppercase tracking-wider">
+                    OR TYPE / PASTE ANY EMOJI
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      maxLength={10}
+                      value={customEmojiInput}
+                      onChange={(e) => {
+                        const val = e.target.value.trim();
+                        setCustomEmojiInput(val);
+                      }}
+                      placeholder="e.g. 👾, 🦄, ⚽"
+                      className="w-full bg-secondary-surface border border-primary-border rounded-xl px-3.5 py-2.5 text-xs text-primary focus:outline-none focus:border-[#E8472A]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCustomEmojiInput('')}
+                      className="px-3 text-xs font-bold text-secondary hover:text-white bg-zinc-900 border border-primary-border rounded-xl cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-zinc-500 mt-1">
+                    Tip: Hit Win + . (Windows) or Ctrl + Cmd + Space (Mac) to open emoji keyboard! Any emoji from standard lists will work.
+                  </p>
+                </div>
+
+                {/* Submit and Cancel Actions */}
+                <div className="flex gap-2 justify-end pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAvatarModal(false)}
+                    className="font-sans font-bold text-xs text-secondary bg-zinc-950 border border-white/5 hover:border-white/10 px-4 py-2.5 rounded-xl text-center active:scale-95 transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveAvatar(customEmojiInput)}
+                    className="font-sans font-bold text-xs text-white bg-[#E8472A] hover:bg-[#ff5d42] active:scale-95 px-5 py-2.5 rounded-xl text-center transition-all shadow-md shadow-[#E8472A]/10 cursor-pointer"
+                  >
+                    Save Emoji
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </motion.div>
         )}

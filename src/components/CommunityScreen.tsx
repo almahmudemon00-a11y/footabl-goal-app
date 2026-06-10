@@ -23,6 +23,7 @@ import {
   query, 
   orderBy, 
   getDocs,
+  getDoc,
   where,
   limit,
   serverTimestamp,
@@ -122,12 +123,16 @@ export default function CommunityScreen({
       if (cid && !rawIds.has(cid)) {
         merged.push({
           ...c,
+          id: cid,
+          commentId: cid,
           postId: c.postId,
           characterId: c.characterId || c.postId,
           userId: c.userId || c.authorId,
           authorId: c.authorId || c.userId,
           content: c.content || c.text,
           text: c.text || c.content,
+          upvotes: c.upvotes !== undefined ? c.upvotes : (c.likes || 0),
+          downvotes: c.downvotes !== undefined ? c.downvotes : (c.dislikes || 0),
         } as any);
       }
     });
@@ -534,8 +539,8 @@ export default function CommunityScreen({
 
       // Filter all posts by this user using dictionary lookup
       const userPosts = postsByUser[uid] || [];
-      const likesCount = userPosts.reduce((acc, p) => acc + (p.likedBy?.length || p.upvotes || 0), 0);
-      const dislikesCount = userPosts.reduce((acc, p) => acc + (p.dislikedBy?.length || p.downvotes || 0), 0);
+      const likesCount = userPosts.reduce((acc, p) => acc + (p.upvotes !== undefined ? p.upvotes : (p.likedBy?.length || 0)), 0);
+      const dislikesCount = userPosts.reduce((acc, p) => acc + (p.downvotes !== undefined ? p.downvotes : (p.dislikedBy?.length || 0)), 0);
       const guesses = u.correctGuesses || 0;
       const commentsPosted = commentCountByUser[uid] || 0;
       const penalties = u.penaltiesCount || 0;
@@ -609,8 +614,8 @@ export default function CommunityScreen({
     // Sort options
     if (sortOption === 'likes') {
       result.sort((a, b) => {
-        const likesA = a.likedBy?.length || a.upvotes || 0;
-        const likesB = b.likedBy?.length || b.upvotes || 0;
+        const likesA = a.upvotes !== undefined ? a.upvotes : (a.likedBy?.length || 0);
+        const likesB = b.upvotes !== undefined ? b.upvotes : (b.likedBy?.length || 0);
         return likesB - likesA;
       });
     } else if (sortOption === 'active') {
@@ -737,13 +742,41 @@ export default function CommunityScreen({
       dislikedBy = dislikedBy.filter((uid: string) => uid !== myUid);
     }
 
+    const seedThread = seedData?.threads?.find(t => t.threadId === postId);
+    const baseUpvotes = seedThread ? (seedThread.upvotes || 0) : 0;
+    const baseDownvotes = seedThread ? (seedThread.downvotes || 0) : 0;
+
+    const totalUpvotes = baseUpvotes + likedBy.length;
+    const totalDownvotes = baseDownvotes + dislikedBy.length;
+
     try {
-      await updateDoc(doc(db, 'threads', postId), {
-        likedBy,
-        dislikedBy,
-        upvotes: likedBy.length,
-        downvotes: dislikedBy.length
-      });
+      const docRef = doc(db, 'threads', postId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        await setDoc(docRef, {
+          threadId: postDoc.threadId,
+          title: postDoc.title || "",
+          description: postDoc.description || "",
+          category: postDoc.category || "General",
+          type: postDoc.type || "discussion",
+          userId: postDoc.userId || "system",
+          username: postDoc.username || "Anonymous",
+          userAvatar: postDoc.userAvatar || "⚽",
+          timestamp: postDoc.timestamp || Date.now(),
+          likedBy,
+          dislikedBy,
+          upvotes: totalUpvotes,
+          downvotes: totalDownvotes,
+          commentsCount: postDoc.commentsCount || 0
+        });
+      } else {
+        await updateDoc(docRef, {
+          likedBy,
+          dislikedBy,
+          upvotes: totalUpvotes,
+          downvotes: totalDownvotes
+        });
+      }
     } catch (err) {
       console.error("Like toggle error:", err);
       triggerNotification("Operation failed.", true);
@@ -779,13 +812,41 @@ export default function CommunityScreen({
       likedBy = likedBy.filter((uid: string) => uid !== myUid);
     }
 
+    const seedThread = seedData?.threads?.find(t => t.threadId === postId);
+    const baseUpvotes = seedThread ? (seedThread.upvotes || 0) : 0;
+    const baseDownvotes = seedThread ? (seedThread.downvotes || 0) : 0;
+
+    const totalUpvotes = baseUpvotes + likedBy.length;
+    const totalDownvotes = baseDownvotes + dislikedBy.length;
+
     try {
-      await updateDoc(doc(db, 'threads', postId), {
-        likedBy,
-        dislikedBy,
-        upvotes: likedBy.length,
-        downvotes: dislikedBy.length
-      });
+      const docRef = doc(db, 'threads', postId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        await setDoc(docRef, {
+          threadId: postDoc.threadId,
+          title: postDoc.title || "",
+          description: postDoc.description || "",
+          category: postDoc.category || "General",
+          type: postDoc.type || "discussion",
+          userId: postDoc.userId || "system",
+          username: postDoc.username || "Anonymous",
+          userAvatar: postDoc.userAvatar || "⚽",
+          timestamp: postDoc.timestamp || Date.now(),
+          likedBy,
+          dislikedBy,
+          upvotes: totalUpvotes,
+          downvotes: totalDownvotes,
+          commentsCount: postDoc.commentsCount || 0
+        });
+      } else {
+        await updateDoc(docRef, {
+          likedBy,
+          dislikedBy,
+          upvotes: totalUpvotes,
+          downvotes: totalDownvotes
+        });
+      }
     } catch (err) {
       console.error("Dislike toggle error:", err);
       triggerNotification("Operation failed.", true);
@@ -823,14 +884,63 @@ export default function CommunityScreen({
       // 2. Mark parent doc as reported
       if (reportingItem.type === 'post') {
         const postRef = doc(db, 'threads', reportingItem.id);
-        await updateDoc(postRef, {
-          reported: true
-        });
+        const postSnap = await getDoc(postRef);
+        if (postSnap.exists()) {
+          await updateDoc(postRef, {
+            reported: true
+          });
+        } else {
+          // Instantiate seed post
+          const matchedPost = posts.find(p => p.threadId === reportingItem.id);
+          if (matchedPost) {
+            await setDoc(postRef, {
+              threadId: matchedPost.threadId,
+              title: matchedPost.title || "",
+              description: matchedPost.description || "",
+              category: matchedPost.category || "General",
+              type: matchedPost.type || "discussion",
+              userId: matchedPost.userId || "system",
+              username: matchedPost.username || "Anonymous",
+              userAvatar: matchedPost.userAvatar || "⚽",
+              timestamp: matchedPost.timestamp || Date.now(),
+              likedBy: matchedPost.likedBy || [],
+              dislikedBy: matchedPost.dislikedBy || [],
+              upvotes: matchedPost.upvotes || 0,
+              downvotes: matchedPost.downvotes || 0,
+              commentsCount: matchedPost.commentsCount || 0,
+              reported: true
+            });
+          }
+        }
       } else {
         const commentRef = doc(db, 'comments', reportingItem.id);
-        await updateDoc(commentRef, {
-          reported: true
-        });
+        const commentSnap = await getDoc(commentRef);
+        if (commentSnap.exists()) {
+          await updateDoc(commentRef, {
+            reported: true
+          });
+        } else {
+          // Instantiate seed comment
+          const commentDoc = allComments.find(c => (c.commentId || c.id) === reportingItem.id);
+          if (commentDoc) {
+            await setDoc(commentRef, {
+              commentId: commentDoc.commentId || commentDoc.id,
+              characterId: commentDoc.characterId || commentDoc.postId || "general",
+              postId: commentDoc.postId || commentDoc.characterId || "general",
+              userId: commentDoc.userId || commentDoc.authorId || "system",
+              username: commentDoc.username || "Anonymous",
+              text: commentDoc.text || commentDoc.content || "",
+              upvotes: commentDoc.upvotes || 0,
+              downvotes: commentDoc.downvotes || 0,
+              timestamp: commentDoc.timestamp || Date.now(),
+              likedBy: commentDoc.likedBy || [],
+              dislikedBy: commentDoc.dislikedBy || [],
+              replyToUsername: commentDoc.replyToUsername || null,
+              parentCommentId: commentDoc.parentCommentId || null,
+              reported: true
+            });
+          }
+        }
       }
 
       setReportingItem(null);
@@ -897,6 +1007,7 @@ export default function CommunityScreen({
     const commentRecord = {
       commentId,
       characterId: postId,
+      postId: postId,
       userId: myUid,
       username: user.username || myUid,
       text: trimmedText,
@@ -916,9 +1027,30 @@ export default function CommunityScreen({
       const postRef = doc(db, 'threads', postId);
       const matchedPost = posts.find(p => p.threadId === postId);
       if (matchedPost) {
-        await updateDoc(postRef, {
-          commentsCount: (matchedPost.commentsCount || 0) + 1
-        });
+        const postSnap = await getDoc(postRef);
+        if (!postSnap.exists()) {
+          // Initialize post in Firestore with the new comments count!
+          await setDoc(postRef, {
+            threadId: matchedPost.threadId,
+            title: matchedPost.title || "",
+            description: matchedPost.description || "",
+            category: matchedPost.category || "General",
+            type: matchedPost.type || "discussion",
+            userId: matchedPost.userId || "system",
+            username: matchedPost.username || "Anonymous",
+            userAvatar: matchedPost.userAvatar || "⚽",
+            timestamp: matchedPost.timestamp || Date.now(),
+            likedBy: matchedPost.likedBy || [],
+            dislikedBy: matchedPost.dislikedBy || [],
+            upvotes: matchedPost.upvotes || 0,
+            downvotes: matchedPost.downvotes || 0,
+            commentsCount: (matchedPost.commentsCount || 0) + 1
+          });
+        } else {
+          await updateDoc(postRef, {
+            commentsCount: (matchedPost.commentsCount || 0) + 1
+          });
+        }
       }
 
       setNewCommentText('');
@@ -936,35 +1068,57 @@ export default function CommunityScreen({
       return;
     }
 
-    const commentDoc = allComments.find(c => c.id === commentId);
+    const commentDoc = allComments.find(c => (c.commentId || c.id) === commentId);
     if (!commentDoc) return;
 
     let likedBy = commentDoc.likedBy || [];
-    let upvotesCount = commentDoc.upvotes || 0;
     let dislikedBy = commentDoc.dislikedBy || [];
-    let downvotesCount = commentDoc.downvotes || 0;
 
     const isLiked = likedBy.includes(myUid);
     if (isLiked) {
       likedBy = likedBy.filter((uid: string) => uid !== myUid);
-      upvotesCount = Math.max(0, upvotesCount - 1);
     } else {
       likedBy.push(myUid);
-      upvotesCount += 1;
       // Remove dislike if registered
       if (dislikedBy.includes(myUid)) {
         dislikedBy = dislikedBy.filter((uid: string) => uid !== myUid);
-        downvotesCount = Math.max(0, downvotesCount - 1);
       }
     }
 
+    const seedComment = seedData?.comments?.find(c => (c.commentId || c.id) === commentId);
+    const baseUpvotes = seedComment ? (seedComment.upvotes !== undefined ? seedComment.upvotes : (seedComment.likes || 0)) : 0;
+    const baseDownvotes = seedComment ? (seedComment.downvotes !== undefined ? seedComment.downvotes : (seedComment.dislikes || 0)) : 0;
+
+    const totalUpvotes = baseUpvotes + likedBy.length;
+    const totalDownvotes = baseDownvotes + dislikedBy.length;
+
     try {
-      await updateDoc(doc(db, 'comments', commentId), {
-        likedBy,
-        upvotes: upvotesCount,
-        dislikedBy,
-        downvotes: downvotesCount
-      });
+      const docRef = doc(db, 'comments', commentId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        await setDoc(docRef, {
+          commentId: commentDoc.commentId || commentDoc.id,
+          characterId: commentDoc.characterId || commentDoc.postId || "",
+          postId: commentDoc.postId || commentDoc.characterId || "",
+          userId: commentDoc.userId || commentDoc.authorId || "system",
+          username: commentDoc.username || "Anonymous",
+          text: commentDoc.text || commentDoc.content || "",
+          upvotes: totalUpvotes,
+          downvotes: totalDownvotes,
+          timestamp: commentDoc.timestamp || Date.now(),
+          likedBy,
+          dislikedBy,
+          replyToUsername: commentDoc.replyToUsername || null,
+          parentCommentId: commentDoc.parentCommentId || null
+        });
+      } else {
+        await updateDoc(docRef, {
+          likedBy,
+          upvotes: totalUpvotes,
+          dislikedBy,
+          downvotes: totalDownvotes
+        });
+      }
     } catch (err) {
       console.error(err);
     }
@@ -977,35 +1131,57 @@ export default function CommunityScreen({
       return;
     }
 
-    const commentDoc = allComments.find(c => c.id === commentId);
+    const commentDoc = allComments.find(c => (c.commentId || c.id) === commentId);
     if (!commentDoc) return;
 
     let likedBy = commentDoc.likedBy || [];
-    let upvotesCount = commentDoc.upvotes || 0;
     let dislikedBy = commentDoc.dislikedBy || [];
-    let downvotesCount = commentDoc.downvotes || 0;
 
     const isDisliked = dislikedBy.includes(myUid);
     if (isDisliked) {
       dislikedBy = dislikedBy.filter((uid: string) => uid !== myUid);
-      downvotesCount = Math.max(0, downvotesCount - 1);
     } else {
       dislikedBy.push(myUid);
-      downvotesCount += 1;
       // Remove like if registered
       if (likedBy.includes(myUid)) {
         likedBy = likedBy.filter((uid: string) => uid !== myUid);
-        upvotesCount = Math.max(0, upvotesCount - 1);
       }
     }
 
+    const seedComment = seedData?.comments?.find(c => (c.commentId || c.id) === commentId);
+    const baseUpvotes = seedComment ? (seedComment.upvotes !== undefined ? seedComment.upvotes : (seedComment.likes || 0)) : 0;
+    const baseDownvotes = seedComment ? (seedComment.downvotes !== undefined ? seedComment.downvotes : (seedComment.dislikes || 0)) : 0;
+
+    const totalUpvotes = baseUpvotes + likedBy.length;
+    const totalDownvotes = baseDownvotes + dislikedBy.length;
+
     try {
-      await updateDoc(doc(db, 'comments', commentId), {
-        likedBy,
-        upvotes: upvotesCount,
-        dislikedBy,
-        downvotes: downvotesCount
-      });
+      const docRef = doc(db, 'comments', commentId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        await setDoc(docRef, {
+          commentId: commentDoc.commentId || commentDoc.id,
+          characterId: commentDoc.characterId || commentDoc.postId || "",
+          postId: commentDoc.postId || commentDoc.characterId || "",
+          userId: commentDoc.userId || commentDoc.authorId || "system",
+          username: commentDoc.username || "Anonymous",
+          text: commentDoc.text || commentDoc.content || "",
+          upvotes: totalUpvotes,
+          downvotes: totalDownvotes,
+          timestamp: commentDoc.timestamp || Date.now(),
+          likedBy,
+          dislikedBy,
+          replyToUsername: commentDoc.replyToUsername || null,
+          parentCommentId: commentDoc.parentCommentId || null
+        });
+      } else {
+        await updateDoc(docRef, {
+          likedBy,
+          upvotes: totalUpvotes,
+          dislikedBy,
+          downvotes: totalDownvotes
+        });
+      }
     } catch (err) {
       console.error(err);
     }
@@ -1052,9 +1228,29 @@ export default function CommunityScreen({
         const postRef = doc(db, 'threads', parentPostId);
         const matchedPost = posts.find(p => p.threadId === parentPostId);
         if (matchedPost) {
-          await updateDoc(postRef, {
-            commentsCount: Math.max(0, (matchedPost.commentsCount || 0) - 1)
-          });
+          const postSnap = await getDoc(postRef);
+          if (!postSnap.exists()) {
+            await setDoc(postRef, {
+              threadId: matchedPost.threadId,
+              title: matchedPost.title || "",
+              description: matchedPost.description || "",
+              category: matchedPost.category || "General",
+              type: matchedPost.type || "discussion",
+              userId: matchedPost.userId || "system",
+              username: matchedPost.username || "Anonymous",
+              userAvatar: matchedPost.userAvatar || "⚽",
+              timestamp: matchedPost.timestamp || Date.now(),
+              likedBy: matchedPost.likedBy || [],
+              dislikedBy: matchedPost.dislikedBy || [],
+              upvotes: matchedPost.upvotes || 0,
+              downvotes: matchedPost.downvotes || 0,
+              commentsCount: Math.max(0, (matchedPost.commentsCount || 0) - 1)
+            });
+          } else {
+            await updateDoc(postRef, {
+              commentsCount: Math.max(0, (matchedPost.commentsCount || 0) - 1)
+            });
+          }
         }
       }
 
@@ -2007,8 +2203,8 @@ export default function CommunityScreen({
                   const isOwner = post.userId === myUid;
                   const isLiked = (post.likedBy || []).includes(myUid);
                   const isDisliked = (post.dislikedBy || []).includes(myUid);
-                  const postLikesCount = post.likedBy?.length || post.upvotes || 0;
-                  const postDislikesCount = post.dislikedBy?.length || post.downvotes || 0;
+                  const postLikesCount = post.upvotes !== undefined ? post.upvotes : (post.likedBy?.length || 0);
+                  const postDislikesCount = post.downvotes !== undefined ? post.downvotes : (post.dislikedBy?.length || 0);
 
                   return (
                     <div
@@ -2540,10 +2736,10 @@ export default function CommunityScreen({
                   {/* Interactive stats totals row */}
                   <div className={`flex items-center gap-2 text-xs text-zinc-500 flex-wrap ${isScrolled ? 'mt-0.5' : 'mt-2'}`}>
                     <span className="bg-zinc-900/60 px-2 py-1 rounded-full border border-zinc-800/80 flex items-center gap-1 font-mono text-[9px]">
-                      👍 <span className="text-zinc-300 font-bold">{selectedPost.likedBy?.length || selectedPost.upvotes || 0}</span>
+                      👍 <span className="text-zinc-300 font-bold">{selectedPost.upvotes !== undefined ? selectedPost.upvotes : (selectedPost.likedBy?.length || 0)}</span>
                     </span>
                     <span className="bg-zinc-900/60 px-2 py-1 rounded-full border border-zinc-800/80 flex items-center gap-1 font-mono text-[9px]">
-                      👎 <span className="text-zinc-300 font-bold">{selectedPost.dislikedBy?.length || selectedPost.downvotes || 0}</span>
+                      👎 <span className="text-zinc-300 font-bold">{selectedPost.downvotes !== undefined ? selectedPost.downvotes : (selectedPost.dislikedBy?.length || 0)}</span>
                     </span>
                     <span className="bg-zinc-900/60 px-2 py-1 rounded-full border border-zinc-800/85 flex items-center gap-1 font-mono text-[9px] text-amber-400 font-extrabold ml-1">
                       <MessageSquare className="w-2.5 h-2.5 text-amber-500" />

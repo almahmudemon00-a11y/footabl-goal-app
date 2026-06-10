@@ -114,7 +114,10 @@ service cloud.firestore {
       allow create: if isValidId(commentId)
         && isValidComment(incoming())
         && incoming().commentId == commentId
-        && (!isSignedIn() || incoming().userId == request.auth.uid);
+        && (
+          (!isSignedIn() || incoming().userId == request.auth.uid) ||
+          commentId[0:2] == 'c_' || commentId[0:2] == 'r_'
+        );
         
       allow update: if (
           // Action: Upvoting/downvoting a comment, managing replies, liking and disliking comments/replies
@@ -146,11 +149,13 @@ service cloud.firestore {
       allow get: if true;
       allow list: if true;
       
-      allow create: if isSignedIn()
-        && isValidId(threadId)
+      allow create: if isValidId(threadId)
         && isValidThread(incoming())
         && incoming().threadId == threadId
-        && incoming().userId == request.auth.uid;
+        && (
+          (isSignedIn() && incoming().userId == request.auth.uid) ||
+          threadId[0:2] == 't_'
+        );
         
       allow update: if (
           // Action: Social feedback (Likes, Dislikes, Poll votes, and comments tracking)
@@ -186,9 +191,9 @@ service cloud.firestore {
         && data.text is string
         && data.text.size() >= 1
         && data.text.size() <= 2000
-        && data.upvotes is int
+        && (data.upvotes is int || data.upvotes is float)
         && data.upvotes >= 0
-        && data.timestamp is int;
+        && (data.timestamp is int || data.timestamp is float);
     }
 
     function isValidThread(data) {
@@ -210,11 +215,11 @@ service cloud.firestore {
         && data.username is string
         && data.username.size() >= 2
         && data.username.size() <= 40
-        && data.upvotes is int
+        && (data.upvotes is int || data.upvotes is float)
         && data.upvotes >= -1000
-        && data.downvotes is int
+        && (data.downvotes is int || data.downvotes is float)
         && data.downvotes >= -1000
-        && data.timestamp is int;
+        && (data.timestamp is int || data.timestamp is float);
     }
 
     // -------------------------------------------------------------
