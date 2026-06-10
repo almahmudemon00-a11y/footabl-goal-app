@@ -343,7 +343,7 @@ export default function CommunityScreen({
     setStatusMessage({ text, isError });
     setTimeout(() => {
       setStatusMessage(null);
-    }, 4000);
+    }, 2000);
   };
 
   // Real-time listener for current user profile

@@ -306,7 +306,7 @@ export default function PlayScreen({
       setShowLevelUpAlert(true);
       const timer = setTimeout(() => {
         setShowLevelUpAlert(false);
-      }, 3500);
+      }, 1200);
       return () => clearTimeout(timer);
     }
     prevLevelRef.current = levelProgress.level;
@@ -465,11 +465,11 @@ export default function PlayScreen({
       setStreak(nextStreak);
       setTimeout(() => {
         handleNextRound();
-      }, 1800);
+      }, 750);
     } else {
       setTimeout(() => {
         setIsGameOver(true);
-      }, 1850);
+      }, 800);
     }
   };
 

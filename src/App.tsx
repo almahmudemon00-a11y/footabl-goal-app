@@ -349,14 +349,34 @@ export default function App() {
         where('username', '==', usernameToSearch)
       );
       const querySnapshot = await getDocs(q);
-      if (querySnapshot.empty) {
-        return null;
-      }
       
       let foundDoc: any = null;
-      querySnapshot.forEach((doc) => {
-        foundDoc = { id: doc.id, ...doc.data() };
-      });
+      if (!querySnapshot.empty) {
+        querySnapshot.forEach((doc) => {
+          foundDoc = { id: doc.id, ...doc.data() };
+        });
+      } else {
+        // Fallback: search in static seedData.users
+        if (seedData && seedData.users) {
+          const matchedStatic = seedData.users.find(
+            u => u.username && u.username.toLowerCase() === usernameToSearch.toLowerCase()
+          );
+          if (matchedStatic) {
+            foundDoc = {
+              id: matchedStatic.userId || matchedStatic.uid,
+              username: matchedStatic.username,
+              avatar: matchedStatic.userAvatar || matchedStatic.avatar || '⚽',
+              joinedDate: matchedStatic.joinedDate || 'Unknown',
+              bio: matchedStatic.bio || '',
+              bestStreak: matchedStatic.bestStreak || 0,
+              gamesPlayed: matchedStatic.gamesPlayed || 0,
+              correctGuesses: matchedStatic.correctGuesses || 0,
+              totalGuesses: matchedStatic.totalGuesses || 0,
+              favoriteUniverse: matchedStatic.favoriteUniverse || 'International Football',
+            };
+          }
+        }
+      }
       
       if (!foundDoc) return null;
       
